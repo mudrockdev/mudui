@@ -296,10 +296,80 @@ bun install
 bun run test        # library tests (renderer, layout, input, components)
 bun run check       # svelte-check
 bun run example     # run the example app
+bun run bench       # benchmarks (see below)
 bun run prepack     # build dist/ and lint the package
 ```
 
 Inside this repo, the example resolves `mudui` to `src/lib` through the `mudui-source` export condition.
+
+### Benchmarks
+
+`bun run bench` renders a set of scenes in a virtual terminal and reports:
+
+- **Frames**: time for one update plus a full render (mean, p50, p99), the resulting `max fps` (1000 / mean), mount time and bytes written per frame.
+- **Where frame time goes**: Svelte's update, layout, paint, diff, and the runtime's own per-frame work.
+- **Resize**: frames that follow a size change, with the size swept one cell at a time like a drag. A resize _storm_ resizes every 4 ms through the 60 fps scheduler. It reports how stale frames are, how long the screen stays blank after the clear each resize writes, and whether the final frame matches a fresh render at that size.
+- **Scheduler**: the refresh rate an app actually gets at `fps` caps of 30, 60, 120 and uncapped, while state changes every millisecond, with frame spacing and CPU use.
+
+Use `--quick` for shorter runs and `--filter <name>` to pick scenarios. To track regressions, save a run with `--json base.json`, then compare later runs with `--compare base.json`. Terminal emulator speed isn't measured; `bytes/frame` is the proxy for it. The scenes are in `bench/scenes`.
+
+Results from one machine. Frame times depend on the CPU, so compare runs from the same machine:
+
+```text
+mudui benchmarks · bun 1.4.5 · AMD Ryzen 7 9700X 8-Core Processor · linux-x64
+
+Frames (one update + full render; time in ms)
+
+scenario        size    mount   mean    p50    p99   max  max fps  bytes/frame
+──────────────  ──────  ─────  ─────  ─────  ─────  ────  ───────  ───────────
+counter         80x24   0.544  0.023  0.021  0.042  1.07   43,828           21
+dashboard/idle  160x48   5.62   1.56   1.46   2.49  2.95      639            0
+dashboard       160x48   5.07   1.90   1.82   3.00  3.46      526          840
+typing          80x24   0.524  0.057  0.052  0.102  1.38   17,619           38
+log/10k         120x40   2.32  0.805  0.787   1.64  2.36    1,243         2.0K
+list/1k         120x40   24.7   12.9   12.9   17.9  18.8       78         1.6K
+grid/full       200x60   23.0   19.4   19.3   22.0  22.0       52        53.6K
+
+Where frame time goes (mean ms, share of frame)
+
+scenario            svelte      layout       paint        diff     runtime
+──────────────  ──────────  ──────────  ──────────  ──────────  ──────────
+counter         0.001   3%  0.007  29%  0.006  25%  0.009  40%  0.001   3%
+dashboard/idle  0.000   0%   1.15  74%  0.227  14%  0.038   2%  0.148   9%
+dashboard       0.075   4%   1.36  72%  0.263  14%  0.069   4%  0.133   7%
+log/10k         0.044   5%  0.382  47%  0.086  11%  0.233  29%  0.059   7%
+list/1k         0.042   0%   11.0  86%  0.594   5%  0.088   1%   1.11   9%
+grid/full        1.24   6%   11.2  58%   2.64  14%   4.05  21%  0.227   1%
+
+Resize (one size change + full render, sweeping the size like a drag; time in ms)
+
+scenario          size            mean    p50    p99    max  max fps  bytes/frame  passes
+────────────────  ─────────────  ─────  ─────  ─────  ─────  ───────  ───────────  ──────
+resize/counter    40x12–80x24    0.067  0.062  0.152  0.869   14,855         1.3K     1.0
+resize/dashboard  120x36–160x48   3.43   3.34   4.86   5.14      292         8.2K     2.0
+resize/log        80x28–120x40   0.928  0.908   1.64   2.27    1,077         4.1K     1.0
+resize/list       80x28–120x40    12.7   12.7   17.4   17.8       79         4.3K     1.0
+resize/grid       160x48–200x60   15.8   13.8   27.2   27.2       63        42.7K     1.2
+
+Resize storm (resize every 4ms through the 60fps scheduler, like dragging a window)
+
+scene      sizes          events/s  frames/s  staleness p50      p99  blank p50      max  blank %  cpu  bytes/frame  settled
+─────────  ─────────────  ────────  ────────  ─────────────  ───────  ─────────  ───────  ───────  ───  ───────────  ───────
+dashboard  120x36–160x48       200      50.0        19.9 ms  20.7 ms    18.3 ms  18.9 ms      91%  23%         8.4K  WRONG
+list       80x28–120x40        140      35.0        28.2 ms  32.1 ms    26.8 ms  30.3 ms      94%  53%         4.4K  ok
+grid       160x48–200x60       104      25.8        39.1 ms  46.7 ms    28.5 ms  32.5 ms      73%  65%        44.7K  ok
+
+staleness: oldest unrendered resize → frame. blank: the clear a resize writes → next frame.
+
+Scheduler (dashboard 160x48, state changes every 1ms)
+
+fps cap  achieved fps  frame interval p50      p99      max  cpu  bytes/frame
+───────  ────────────  ──────────────────  ───────  ───────  ───  ───────────
+     30          29.1             35.0 ms  35.4 ms  35.4 ms  22%         1.6K
+     60          56.4             17.8 ms  18.8 ms  18.9 ms  24%         1.7K
+    120         102.4             9.82 ms  10.5 ms  10.9 ms  34%         1.6K
+    max         345.2             2.81 ms  3.65 ms  6.91 ms  73%         1.1K
+```
 
 ## Limitations
 

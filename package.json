@@ -63,6 +63,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "example": "bun run --cwd examples/taskboard start",
+    "bench": "bun bench/run.ts",
     "format": "bun fmt --write ."
   },
   "devDependencies": {
