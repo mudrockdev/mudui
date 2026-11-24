@@ -8,6 +8,12 @@
 </script>
 
 <box height="100%">
-  <Select items={s.items} bind:value={s.value} height={s.height} autofocus={s.autofocus ?? true} onchange={() => changes++} />
+  <Select
+    items={s.items}
+    bind:value={s.value}
+    height={s.height}
+    autofocus={s.autofocus ?? true}
+    onchange={() => changes++}
+  />
   <txt>value: {String(s.value)} changes: {changes}</txt>
 </box>

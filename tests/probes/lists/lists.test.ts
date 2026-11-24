@@ -61,24 +61,30 @@ describe("Select", () => {
 });
 
 describe("MultiSelect", () => {
-  test.failing("toggle-all (a) leaves disabled items' checked state alone", () => {
-    const { t } = mk(PMulti, {
-      items: ["a", { label: "b", value: "b", disabled: true }, "c"],
-      value: ["b"],
-    });
-    t.press("a");
-    expect(t.frame()).toContain("[x] b");
-    t.press("a");
-    expect(t.frame()).toContain("[x] b");
-    t.unmount();
-  });
+  test.failing(
+    "toggle-all (a) leaves disabled items' checked state alone",
+    () => {
+      const { t } = mk(PMulti, {
+        items: ["a", { label: "b", value: "b", disabled: true }, "c"],
+        value: ["b"],
+      });
+      t.press("a");
+      expect(t.frame()).toContain("[x] b");
+      t.press("a");
+      expect(t.frame()).toContain("[x] b");
+      t.unmount();
+    },
+  );
 });
 
 describe("Tabs", () => {
   test("arrows skip a disabled tab", () => {
     const { t } = mk(
       PTabs,
-      { items: ["A", { label: "B", value: "B", disabled: true }, "C"], value: "A" },
+      {
+        items: ["A", { label: "B", value: "B", disabled: true }, "C"],
+        value: "A",
+      },
       40,
       3,
     );
@@ -88,7 +94,12 @@ describe("Tabs", () => {
   });
 
   test("without a value, the first enabled tab is selected", () => {
-    const { t } = mk(PTabs, { items: [{ label: "A", value: "A", disabled: true }, "B"] }, 40, 3);
+    const { t } = mk(
+      PTabs,
+      { items: [{ label: "A", value: "A", disabled: true }, "B"] },
+      40,
+      3,
+    );
     expect(t.frame()).toContain("value: B");
     t.unmount();
   });
@@ -103,7 +114,10 @@ describe("Tabs", () => {
   test("when the tabs overflow, the strip scrolls so the active tab is whole", () => {
     const { t } = mk(
       PTabs,
-      { items: ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta"], value: "Zeta" },
+      {
+        items: ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta"],
+        value: "Zeta",
+      },
       20,
       3,
     );
@@ -125,7 +139,12 @@ describe("Table", () => {
     Array.from({ length: n }, (_, i) => ({ name: `file ${i}`, size: i }));
 
   test.failing("bound selected is clamped when rows shrink below it", () => {
-    const { t, s } = mk(PTable, { columns, rows: rows(30), selected: 25, height: 5 }, 40, 12);
+    const { t, s } = mk(
+      PTable,
+      { columns, rows: rows(30), selected: 25, height: 5 },
+      40,
+      12,
+    );
     t.frame();
     s.rows = rows(10);
     expect(t.frame()).toContain("▌file 9");
@@ -134,8 +153,22 @@ describe("Table", () => {
   });
 
   test.failing("a newline in a cell keeps the row on one line", () => {
-    const cols = [{ key: "a", title: "A" }, { key: "b", title: "B" }];
-    const { t } = mk(PTable, { columns: cols, rows: [{ a: "ab\ncd", b: "end" }, { a: "xxxxx", b: "end" }] }, 30, 6);
+    const cols = [
+      { key: "a", title: "A" },
+      { key: "b", title: "B" },
+    ];
+    const { t } = mk(
+      PTable,
+      {
+        columns: cols,
+        rows: [
+          { a: "ab\ncd", b: "end" },
+          { a: "xxxxx", b: "end" },
+        ],
+      },
+      30,
+      6,
+    );
     const f = t.frame().split("\n");
     expect(f[2]).toContain("end");
     expect(f[3]).toContain("xxxxx");
@@ -143,8 +176,22 @@ describe("Table", () => {
   });
 
   test.failing("a tab in a cell keeps columns aligned", () => {
-    const cols = [{ key: "a", title: "A" }, { key: "b", title: "B" }];
-    const { t } = mk(PTable, { columns: cols, rows: [{ a: "x\ty", b: "end" }, { a: "xxxx", b: "end" }] }, 30, 6);
+    const cols = [
+      { key: "a", title: "A" },
+      { key: "b", title: "B" },
+    ];
+    const { t } = mk(
+      PTable,
+      {
+        columns: cols,
+        rows: [
+          { a: "x\ty", b: "end" },
+          { a: "xxxx", b: "end" },
+        ],
+      },
+      30,
+      6,
+    );
     const f = t.frame().split("\n");
     expect(f[2].indexOf("end")).toBe(f[3].indexOf("end"));
     t.unmount();
@@ -152,18 +199,21 @@ describe("Table", () => {
 });
 
 describe("LogView", () => {
-  test.failing("a detached view does not follow new lines up to a stale offset after the log is cleared", () => {
-    const { t, s } = mk(PLog, { height: 4, count: 50 }, 30, 8);
-    t.press("Tab", "PageUp"); // detached, top = line 43
-    expect(lines(t.frame())[1]).toBe("line 43");
-    s.count = 0;
-    t.frame();
-    s.count = 30;
-    const after_refill = lines(t.frame())[1]; // line 26
-    s.count = 60;
-    const top = lines(t.frame())[1];
-    // either stays where it was (detached) or follows the end; currently stops at line 43
-    expect([after_refill, "line 56"]).toContain(top);
-    t.unmount();
-  });
+  test.failing(
+    "a detached view does not follow new lines up to a stale offset after the log is cleared",
+    () => {
+      const { t, s } = mk(PLog, { height: 4, count: 50 }, 30, 8);
+      t.press("Tab", "PageUp"); // detached, top = line 43
+      expect(lines(t.frame())[1]).toBe("line 43");
+      s.count = 0;
+      t.frame();
+      s.count = 30;
+      const after_refill = lines(t.frame())[1]; // line 26
+      s.count = 60;
+      const top = lines(t.frame())[1];
+      // either stays where it was (detached) or follows the end; currently stops at line 43
+      expect([after_refill, "line 56"]).toContain(top);
+      t.unmount();
+    },
+  );
 });

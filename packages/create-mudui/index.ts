@@ -106,6 +106,7 @@ export async function create({
       dev: "bun --watch src/main.ts",
       start: "bun src/main.ts",
       test: "bun test",
+      format: "bun fmt --write .",
       "build:windows": "bun build.ts windows",
       "build:linux": "bun build.ts linux",
       "build:darwin": "bun build.ts darwin",
@@ -120,7 +121,7 @@ export async function create({
   };
   await Bun.write(
     `${target}/package.json`,
-    JSON.stringify(manifest, null, "\t") + "\n",
+    JSON.stringify(manifest, null, 2) + "\n",
   );
 
   return name;

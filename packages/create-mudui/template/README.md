@@ -6,6 +6,7 @@ A terminal app built with [Svelte](https://svelte.dev) and [mudui](https://www.n
 bun run dev     # run, restarting on changes
 bun start       # run
 bun test        # test
+bun run format  # format the code
 
 bun run build:linux     # single executables in dist/
 bun run build:windows

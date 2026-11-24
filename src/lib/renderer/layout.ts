@@ -108,11 +108,7 @@ function collect_runs(
     } else if (child instanceof TElement) {
       const style = computeStyle(child);
       if (style.hidden) continue;
-      collect_runs(
-        child,
-        mergeTextStyle(inherited, style.inlineText),
-        runs,
-      );
+      collect_runs(child, mergeTextStyle(inherited, style.inlineText), runs);
     }
   }
 }
@@ -190,7 +186,6 @@ export interface Chrome {
   bottom: number;
   left: number;
 }
-
 
 function clamp(
   value: number,
@@ -578,7 +573,11 @@ export function layout(n: LayoutNode, rect: Rect): void {
       layout(item, { x, y: top, width: widths[i], height: heights[i] });
       content_width = Math.max(content_width, widths[i] + margin_x(item));
       y +=
-        mt + heights[i] + margin[2] + s.gap + (i < items.length - 1 ? between : 0);
+        mt +
+        heights[i] +
+        margin[2] +
+        s.gap +
+        (i < items.length - 1 ? between : 0);
     }
 
     n.contentWidth = content_width;
@@ -586,7 +585,8 @@ export function layout(n: LayoutNode, rect: Rect): void {
   } else {
     const widths = row_widths(n, items, inner.width);
     let used = gaps;
-    for (let i = 0; i < items.length; i++) used += widths[i] + margin_x(items[i]);
+    for (let i = 0; i < items.length; i++)
+      used += widths[i] + margin_x(items[i]);
     const { start, between } = justify_offsets(
       s.justify,
       inner.width - used,

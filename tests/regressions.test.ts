@@ -99,7 +99,8 @@ describe("Toaster", () => {
 describe("the terminal going away (window closed, ssh dropped)", () => {
   // a tty whose writes fail with EIO once it's closed, like a deleted pty
   function dead_tty() {
-    const { PassThrough } = require("node:stream") as typeof import("node:stream");
+    const { PassThrough } =
+      require("node:stream") as typeof import("node:stream");
     const stdin = Object.assign(new PassThrough(), {
       isTTY: true,
       isRaw: false,
@@ -118,7 +119,10 @@ describe("the terminal going away (window closed, ssh dropped)", () => {
     stdout.resume();
     const write = stdout.write.bind(stdout);
     stdout.write = ((chunk: string) => {
-      if (closed) throw Object.assign(new Error("EIO: i/o error, write"), { code: "EIO" });
+      if (closed)
+        throw Object.assign(new Error("EIO: i/o error, write"), {
+          code: "EIO",
+        });
       return write(chunk);
     }) as typeof stdout.write;
     return {

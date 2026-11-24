@@ -1,9 +1,5 @@
 <script lang="ts" generics="T">
-  import type {
-    KeyEvent,
-    LayoutEvent,
-    WheelEvent,
-  } from "../runtime/events.js";
+  import type { KeyEvent, LayoutEvent, WheelEvent } from "../runtime/events.js";
   import { getTheme } from "../theme.js";
   import type { ColorValue } from "../types.js";
   import { normalizeItems } from "../items.js";

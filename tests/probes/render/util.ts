@@ -36,6 +36,8 @@ export function draw(r: TElement, width: number, height: number): string {
 export function cells(s: Screen): string[] {
   const out: string[] = [];
   for (let i = 0; i < s.width * s.height; i++)
-    out.push(`${s.chars[i]}|${s.widths[i]}|${s.fg[i]}|${s.bg[i]}|${s.attrs[i]}`);
+    out.push(
+      `${s.chars[i]}|${s.widths[i]}|${s.fg[i]}|${s.bg[i]}|${s.attrs[i]}`,
+    );
   return out;
 }

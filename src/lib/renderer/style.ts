@@ -296,11 +296,30 @@ function to_edges(value: unknown): Edges {
 }
 
 const EDGE_KEYS = {
-  padding: ["padding", "paddingx", "paddingy", "paddingtop", "paddingright", "paddingbottom", "paddingleft"],
-  margin: ["margin", "marginx", "marginy", "margintop", "marginright", "marginbottom", "marginleft"],
+  padding: [
+    "padding",
+    "paddingx",
+    "paddingy",
+    "paddingtop",
+    "paddingright",
+    "paddingbottom",
+    "paddingleft",
+  ],
+  margin: [
+    "margin",
+    "marginx",
+    "marginy",
+    "margintop",
+    "marginright",
+    "marginbottom",
+    "marginleft",
+  ],
 } as const;
 
-function edges(attrs: Map<string, unknown>, prefix: "padding" | "margin"): Edges {
+function edges(
+  attrs: Map<string, unknown>,
+  prefix: "padding" | "margin",
+): Edges {
   const [all, kx, ky, ...sides] = EDGE_KEYS[prefix];
   const out = to_edges(attrs.get(all));
   const x = attrs.get(kx);
@@ -358,7 +377,6 @@ export function parseTextStyle(attrs: Map<string, unknown>): TextStyle {
   if (strike !== undefined) style.strike = strike;
   return style;
 }
-
 
 /** Normalized attributes of the element, with `style` expanded */
 export function normalizedAttributes(element: TElement): Map<string, unknown> {

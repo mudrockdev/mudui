@@ -2,7 +2,10 @@
   import { untrack } from "svelte";
   import { Button, Panel, useInput } from "../../../src/lib/index.ts";
 
-  let { disabledB = false, hiddenPanel = false }: { disabledB?: boolean; hiddenPanel?: boolean } = $props();
+  let {
+    disabledB = false,
+    hiddenPanel = false,
+  }: { disabledB?: boolean; hiddenPanel?: boolean } = $props();
   let off = $state(untrack(() => disabledB));
   let hide = $state(untrack(() => hiddenPanel));
 

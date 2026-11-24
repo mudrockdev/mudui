@@ -8,7 +8,12 @@
 
 <box height="100%">
   <txt>header</txt>
-  <ScrollView height={s.height} grow={s.grow} follow={s.follow} bind:offset={s.offset}>
+  <ScrollView
+    height={s.height}
+    grow={s.grow}
+    follow={s.follow}
+    bind:offset={s.offset}
+  >
     {#each { length: s.count }, i}
       <txt>{s.prefix ?? "line"} {i}</txt>
     {/each}

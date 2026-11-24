@@ -39,6 +39,7 @@ describe("create-mudui", () => {
     expect(manifest.devDependencies).toEqual({ "@types/bun": "latest" });
     expect(manifest.scripts.start).toBe("bun src/main.ts");
     expect(manifest.scripts.test).toBe("bun test");
+    expect(manifest.scripts.format).toBe("bun fmt --write .");
     expect(manifest.scripts["build:windows"]).toBe("bun build.ts windows");
     expect(manifest.scripts["build:linux"]).toBe("bun build.ts linux");
     expect(manifest.scripts["build:darwin"]).toBe("bun build.ts darwin");

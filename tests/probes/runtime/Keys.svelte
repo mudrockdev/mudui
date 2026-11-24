@@ -1,5 +1,12 @@
 <script lang="ts">
-  import { Checkbox, Button, Slider, ScrollView, TextInput, useInput } from "../../../src/lib/index.ts";
+  import {
+    Checkbox,
+    Button,
+    Slider,
+    ScrollView,
+    TextInput,
+    useInput,
+  } from "../../../src/lib/index.ts";
   let { mode = "checkbox" }: { mode?: string } = $props();
   let global = $state("");
   let checked = $state(false);
@@ -20,7 +27,8 @@
   {:else if mode === "scroll"}
     <ScrollView height={3}>
       <Slider bind:value={v} width={20} />
-      {#each Array.from({ length: 10 }, (_, i) => i) as i (i)}<txt>line {i}</txt>{/each}
+      {#each Array.from({ length: 10 }, (_, i) => i) as i (i)}<txt>line {i}</txt
+        >{/each}
     </ScrollView>
   {:else if mode === "input"}
     <TextInput bind:value={text} autofocus />

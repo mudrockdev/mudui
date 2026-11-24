@@ -9,11 +9,23 @@
 <box height="100%">
   {#if s.row}
     <box row>
-      <Table columns={s.columns} rows={s.rows} bind:selected={s.selected} height={s.height} autofocus />
+      <Table
+        columns={s.columns}
+        rows={s.rows}
+        bind:selected={s.selected}
+        height={s.height}
+        autofocus
+      />
       <txt>|side</txt>
     </box>
   {:else}
-    <Table columns={s.columns} rows={s.rows} bind:selected={s.selected} height={s.height} autofocus />
+    <Table
+      columns={s.columns}
+      rows={s.rows}
+      bind:selected={s.selected}
+      height={s.height}
+      autofocus
+    />
   {/if}
   <txt>selected: {s.selected}</txt>
 </box>

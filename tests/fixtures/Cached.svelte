@@ -15,7 +15,8 @@
     if (event.key === "n") width = width === 30 ? 12 : 30;
     if (event.key === "b") bold = !bold;
     if (event.key === "f") fill = !fill;
-    if (event.key === "l") loose = loose === "loose text" ? "other words" : "loose text";
+    if (event.key === "l")
+      loose = loose === "loose text" ? "other words" : "loose text";
   });
 </script>
 

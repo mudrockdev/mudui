@@ -19,7 +19,11 @@ describe("probe: display components", () => {
 
   test("ProgressBar with a label: shrinking the terminal matches a fresh render", () => {
     const p = { value: 0.5, label: "Label", showPercent: true };
-    const t = renderTest(Display, { width: 60, height: 3, props: { variant: "progress", p } });
+    const t = renderTest(Display, {
+      width: 60,
+      height: 3,
+      props: { variant: "progress", p },
+    });
     t.frame();
     t.resize(25, 3);
     t.frame();
@@ -30,11 +34,14 @@ describe("probe: display components", () => {
     expect(got).toBe(render("progress", p, 12, 3));
   });
 
-  test.failing("Sparkline with a NaN sample still draws the other samples", () => {
-    const out = render("spark", { data: [1, NaN, 3] });
-    expect(out.length).toBeGreaterThan(0);
-    expect(out).toContain("█");
-  });
+  test.failing(
+    "Sparkline with a NaN sample still draws the other samples",
+    () => {
+      const out = render("spark", { data: [1, NaN, 3] });
+      expect(out.length).toBeGreaterThan(0);
+      expect(out).toContain("█");
+    },
+  );
 
   test.failing("Sparkline with width={0} draws nothing", () => {
     expect(render("spark", { data: [1, 2, 3], width: 0 })).toBe("");

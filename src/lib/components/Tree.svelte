@@ -1,9 +1,5 @@
 <script lang="ts" generics="T">
-  import type {
-    KeyEvent,
-    LayoutEvent,
-    WheelEvent,
-  } from "../runtime/events.js";
+  import type { KeyEvent, LayoutEvent, WheelEvent } from "../runtime/events.js";
   import { getTheme } from "../theme.js";
   import type { TreeNode } from "../types.js";
   import Scrollbar from "./Scrollbar.svelte";
@@ -199,11 +195,6 @@
     {/each}
   </box>
   {#if rows.length > visible}
-    <Scrollbar
-      total={rows.length}
-      {visible}
-      offset={top}
-      height={visible}
-    />
+    <Scrollbar total={rows.length} {visible} offset={top} height={visible} />
   {/if}
 </box>

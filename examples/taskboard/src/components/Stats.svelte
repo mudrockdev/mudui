@@ -82,7 +82,12 @@
       <Panel title="Momentum">
         <Divider title={`finished, last ${DAYS} days`} />
         <box row gap={1}>
-          <Sparkline data={finished} width={DAYS} color={theme.success} min={0} />
+          <Sparkline
+            data={finished}
+            width={DAYS}
+            color={theme.success}
+            min={0}
+          />
           <txt color={theme.muted}>{finished_total} total</txt>
         </box>
         <Divider title="estimated work left" />

@@ -5,6 +5,13 @@
 </script>
 
 <box width={30}>
-  <Combobox items={s.items} bind:query={s.query} {height} autofocus onselect={(v: any) => (s.chosen = v)} oncancel={() => s.log.push("cancel")} />
+  <Combobox
+    items={s.items}
+    bind:query={s.query}
+    {height}
+    autofocus
+    onselect={(v: any) => (s.chosen = v)}
+    oncancel={() => s.log.push("cancel")}
+  />
   <txt>chosen: {String(s.chosen)}</txt>
 </box>

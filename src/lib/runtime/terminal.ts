@@ -175,7 +175,8 @@ export class NodeTerminal implements Terminal {
     // after a hangup the tty is gone and these fail (EIO); still stop reading,
     // or the process keeps polling a dead terminal
     try {
-      if (this.stdin.isTTY && !this.#closed) this.stdin.setRawMode(this.#was_raw);
+      if (this.stdin.isTTY && !this.#closed)
+        this.stdin.setRawMode(this.#was_raw);
     } catch {
       this.#closed = true;
     }

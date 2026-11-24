@@ -7,6 +7,11 @@
 </script>
 
 <box height="100%">
-  <MultiSelect items={s.items} bind:value={s.value} height={s.height} autofocus />
+  <MultiSelect
+    items={s.items}
+    bind:value={s.value}
+    height={s.height}
+    autofocus
+  />
   <txt>value: {s.value.join(",")}</txt>
 </box>

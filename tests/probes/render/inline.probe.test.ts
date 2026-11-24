@@ -15,7 +15,10 @@ class Tty {
   x = 0;
   y = 0;
   pending = false;
-  constructor(public w: number, public h: number) {
+  constructor(
+    public w: number,
+    public h: number,
+  ) {
     this.grid = Array.from({ length: h }, () => Array(w).fill(" "));
   }
   lf() {
@@ -48,17 +51,35 @@ class Tty {
         i = j + 1;
         continue;
       }
-      if (ch === "\r") { this.x = 0; this.pending = false; i++; continue; }
-      if (ch === "\n") { this.lf(); this.x = 0; this.pending = false; i++; continue; }
+      if (ch === "\r") {
+        this.x = 0;
+        this.pending = false;
+        i++;
+        continue;
+      }
+      if (ch === "\n") {
+        this.lf();
+        this.x = 0;
+        this.pending = false;
+        i++;
+        continue;
+      }
       let j = i;
       while (j < d.length && !/[\x1b\r\n]/.test(d[j])) j++;
       for (const g of graphemes(d.slice(i, j))) {
         const gw = graphemeWidth(g);
-        if (this.pending) { this.lf(); this.x = 0; this.pending = false; }
+        if (this.pending) {
+          this.lf();
+          this.x = 0;
+          this.pending = false;
+        }
         this.grid[this.y][this.x] = g;
         if (gw === 2) this.grid[this.y][this.x + 1] = "";
         this.x += gw;
-        if (this.x >= this.w) { this.x = this.w - 1; this.pending = true; }
+        if (this.x >= this.w) {
+          this.x = this.w - 1;
+          this.pending = true;
+        }
       }
       i = j;
     }
@@ -71,21 +92,24 @@ class Tty {
 }
 
 describe("probe: inline mode output", () => {
-  test.failing("content reaching the last column survives the erase-line after it", () => {
-    store.lines = ["first"];
-    const t = renderTest(Lines, { width: 10, height: 8, fullscreen: false });
-    const tty = new Tty(10, 8);
-    let seen = 0;
-    const check = () => {
-      const f = t.frame();
-      tty.write(t.terminal.output.slice(seen));
-      seen = t.terminal.output.length;
-      expect(tty.text()).toBe(f);
-    };
-    check();
-    store.lines = ["1234567890", "abc"];
-    flushSync();
-    check(); // last column "0" is erased by \x1b[K written right after it
-    t.unmount();
-  });
+  test.failing(
+    "content reaching the last column survives the erase-line after it",
+    () => {
+      store.lines = ["first"];
+      const t = renderTest(Lines, { width: 10, height: 8, fullscreen: false });
+      const tty = new Tty(10, 8);
+      let seen = 0;
+      const check = () => {
+        const f = t.frame();
+        tty.write(t.terminal.output.slice(seen));
+        seen = t.terminal.output.length;
+        expect(tty.text()).toBe(f);
+      };
+      check();
+      store.lines = ["1234567890", "abc"];
+      flushSync();
+      check(); // last column "0" is erased by \x1b[K written right after it
+      t.unmount();
+    },
+  );
 });
