@@ -6,11 +6,11 @@
  * instead of the DOM. `.svelte.ts` / `.svelte.js` modules are compiled too, so
  * runes work in shared state modules.
  *
- * Svelte's client runtime must be selected with the `svelte-custom-renderer`
- * resolve condition: run Bun with `--conditions=svelte-custom-renderer`.
+ * It also makes Svelte load its client runtime (the one that supports custom
+ * renderers), as the `svelte-custom-renderer` resolve condition would, so no
+ * command-line flags are needed.
  */
 import type { BunPlugin } from "bun";
-import { dirname } from "node:path";
 import { compile, compileModule, parse } from "svelte/compiler";
 
 export interface MuduiPluginOptions {
@@ -70,6 +70,43 @@ export function normalizeWhitespace(source: string, filename?: string): string {
   return out;
 }
 
+/** The directory containing `file` */
+const dirname = (file: string) => file.replace(/[\\/][^\\/]*$/, "") || "/";
+
+/** `relative` resolved against the directory `dir`, as a native path */
+const resolvePath = (dir: string, relative: string) =>
+  Bun.fileURLToPath(new URL(relative, Bun.pathToFileURL(`${dir}/`)));
+
+/**
+ * Maps Svelte's server entry files to the client files that the
+ * `svelte-custom-renderer` export condition would select, keyed by Svelte's root.
+ */
+const client_entries = new Map<string, Map<string, string>>();
+
+/** The client file to load instead of `path`, if `path` is one of Svelte's server entries */
+export async function clientEntry(path: string): Promise<string | undefined> {
+  const root = /^(.*[\\/]svelte)[\\/]src[\\/]/.exec(path)?.[1];
+  if (!root) return undefined;
+
+  let map = client_entries.get(root);
+  if (!map) {
+    map = new Map();
+    const { exports } = await Bun.file(`${root}/package.json`).json();
+    for (const entry of Object.values<Record<string, unknown>>(exports ?? {})) {
+      const client = entry?.["svelte-custom-renderer"];
+      if (typeof client !== "string") continue;
+      for (const condition of ["default", "worker"]) {
+        const server = entry[condition];
+        if (typeof server === "string" && server !== client) {
+          map.set(resolvePath(root, server), resolvePath(root, client));
+        }
+      }
+    }
+    client_entries.set(root, map);
+  }
+  return map.get(Bun.fileURLToPath(Bun.pathToFileURL(path)));
+}
+
 /** Absolute path of the renderer module (works from both `src` and `dist`) */
 export const rendererPath = Bun.resolveSync(
   "../renderer/index",
@@ -82,6 +119,20 @@ export function mudui(options: MuduiPluginOptions = {}): BunPlugin {
   return {
     name: "mudui-svelte",
     setup(build) {
+      // Load Svelte's client runtime even without `--conditions=svelte-custom-renderer`:
+      // Bun has no config option for conditions and plugins can't change how bare
+      // specifiers like "svelte" resolve, but they can change what a resolved file contains.
+      build.onLoad({ filter: /[\\/]svelte[\\/]src[\\/].*server\.js$/ }, async ({ path }) => {
+        const client = await clientEntry(path);
+        return {
+          contents: client
+            ? `export * from ${JSON.stringify(client)};`
+            : await Bun.file(path).text(),
+          loader: "js",
+          resolveDir: dirname(path),
+        };
+      });
+
       build.onLoad({ filter: /\.svelte$/ }, async ({ path }) => {
         const custom = options.renderer?.(path);
         // DOM components keep Svelte's usual whitespace handling

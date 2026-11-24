@@ -83,13 +83,13 @@ const app = render(Counter);
 await app.waitUntilExit();
 ```
 
-Run it with the `svelte-custom-renderer` resolve condition, so that `svelte` resolves to its client runtime (the one that supports custom renderers):
+Run it:
 
 ```sh
-bun --conditions=svelte-custom-renderer main.ts
+bun main.ts
 ```
 
-> Put that in your `package.json` scripts. Without the condition, Svelte throws a `custom_renderer_unavailable_on_server` error that explains what's missing.
+> No flags are needed: the `mudui/preload` plugin from `bunfig.toml` makes Svelte load its client runtime, which supports custom renderers. If you see Svelte's `custom_renderer_unavailable_on_server` error, the preload isn't active, so check `bunfig.toml` (or pass `--conditions=svelte-custom-renderer`).
 
 ## Primitives
 
@@ -269,7 +269,7 @@ test("increments", () => {
 
 The harness also has `type(text)`, `paste(text)`, `click(x, y)`, `wheel(x, y, dir)`, `resize(w, h)`, `find(text)`, `focused()` and `screen()` (cells with styles, e.g. `screen().styleAt(x, y).bold`).
 
-Run tests with `bun --conditions=svelte-custom-renderer test`.
+Run tests with `bun test`.
 
 ## How it works
 

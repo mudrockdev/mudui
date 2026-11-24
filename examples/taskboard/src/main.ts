@@ -1,4 +1,4 @@
-#!/usr/bin/env -S bun --conditions=svelte-custom-renderer
+#!/usr/bin/env bun
 /**
  * mudtasks — a terminal task manager built with mudui.
  *

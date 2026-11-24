@@ -37,5 +37,5 @@ Press `?` in the app for all the keys. You can add, edit, toggle, reorder, prior
 ## Setup
 
 - `bunfig.toml` preloads `mudui/preload`, which compiles `.svelte` files with Svelte's `experimental.customRenderer` pointing at mudui's renderer.
-- Scripts run Bun with `--conditions=svelte-custom-renderer`, which selects Svelte's client runtime. They also pass `--conditions=mudui-source`, which only matters inside this repo: it resolves `mudui` to its sources rather than `dist/`.
+- Scripts pass `--conditions=mudui-source`, which only matters inside this repo: it resolves `mudui` to its sources rather than `dist/`.
 - `svelte.config.js` tells editors and `svelte-check` that these components use a custom renderer.

@@ -10,8 +10,8 @@
     "mudtasks": "./src/main.ts"
   },
   "scripts": {
-    "start": "bun --conditions=svelte-custom-renderer --conditions=mudui-source src/main.ts",
-    "test": "bun --conditions=svelte-custom-renderer --conditions=mudui-source test"
+    "start": "bun --conditions=mudui-source src/main.ts",
+    "test": "bun --conditions=mudui-source test"
   },
   "dependencies": {
     "mudui": "workspace:*"

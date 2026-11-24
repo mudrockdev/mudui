@@ -1,13 +1,11 @@
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
-import { mkdir, rename } from "node:fs/promises";
 import { sampleData, type Data } from "./tasks.svelte.ts";
 
-/** `$MUDTASKS_FILE`, or `$XDG_DATA_HOME/mudtasks/tasks.json` */
+/** `$MUDTASKS_FILE`, or `$XDG_DATA_HOME/mudtasks/tasks.json` (default `~/.local/share`) */
 export function defaultPath(): string {
-  if (process.env.MUDTASKS_FILE) return process.env.MUDTASKS_FILE;
-  const base = process.env.XDG_DATA_HOME || join(homedir(), ".local", "share");
-  return join(base, "mudtasks", "tasks.json");
+  if (Bun.env.MUDTASKS_FILE) return Bun.env.MUDTASKS_FILE;
+  const home = Bun.env.HOME ?? Bun.env.USERPROFILE ?? ".";
+  const base = Bun.env.XDG_DATA_HOME || `${home}/.local/share`;
+  return `${base}/mudtasks/tasks.json`;
 }
 
 export async function load(path: string): Promise<Data> {
@@ -22,8 +20,8 @@ export async function load(path: string): Promise<Data> {
 
 /** Writes atomically, so a crash never leaves a half-written file */
 export async function save(path: string, data: Data): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
   const temp = `${path}.${process.pid}.tmp`;
+  // Bun.write creates missing directories
   await Bun.write(temp, JSON.stringify(data, null, "\t"));
-  await rename(temp, path);
+  await Bun.$`mv ${temp} ${path}`.quiet();
 }
