@@ -118,6 +118,8 @@ Attribute names are case- and dash-insensitive (`paddingX`, `padding-x`, `paddin
 
 **Colors**: names (`red`, `brightBlue`, `gray`), `#rgb`, `#rrggbb`, `rgb(r,g,b)`, 256-color indices, or `default`. Truecolor is downgraded automatically when the terminal doesn't support it, and `NO_COLOR` is respected.
 
+Template text follows HTML whitespace rules: a line break plus indentation in your markup counts as a single space, so formatters like Prettier can rewrap components safely. For a real line break, use an expression: `{'first\nsecond'}`.
+
 Some defaults are tuned for terminals. Children in a column don't shrink (they overflow and are clipped). In a row they shrink, which wraps their text, unless they have a fixed `width`.
 
 ## Events and focus
