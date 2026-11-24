@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { renderTest } from "../src/lib/testing/index.ts";
 import Focus from "./fixtures/Focus.svelte";
 import Form from "./fixtures/Form.svelte";
+import Prefilled from "./fixtures/Prefilled.svelte";
 
 const form = (show: string, width = 40, height = 12) =>
   renderTest(Form, { width, height, props: { show } });
@@ -78,6 +79,16 @@ describe("TextInput", () => {
     expect(first.trim()).toBe("pqrstuvwxyz");
     t.press("Home");
     expect(t.frame().split("\n")[0].trim()).toBe("abcdefghijkl");
+    t.unmount();
+  });
+
+  test("shows a value it starts with, scrolled so the cursor (at the end) is visible", () => {
+    const t = renderTest(Prefilled, { width: 30, height: 3 });
+    const [short, long] = t.frame().split("\n");
+    expect(short.trim()).toBe("Call the bank");
+    expect(long.trim()).toBe("pqrstuvwxyz");
+    t.type("!");
+    expect(t.frame().split("\n")[0].trim()).toBe("Call the bank!");
     t.unmount();
   });
 

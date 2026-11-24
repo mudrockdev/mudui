@@ -66,6 +66,14 @@
     let start = Math.min(offset, cursor);
     while (start < cursor && width_of(start, cursor) + cursor_width > room)
       start++;
+    // scroll back left while there's free room at the end, e.g. once the real
+    // width is known (it is 0 on the first frame) or after the text got shorter
+    let filled =
+      width_of(start, shown.length) + (cursor === shown.length ? 1 : 0);
+    while (start > 0 && filled + graphemeWidth(shown[start - 1]) <= room) {
+      start--;
+      filled += graphemeWidth(shown[start]);
+    }
 
     let end = Math.min(cursor + 1, shown.length);
     let used = width_of(start, cursor) + cursor_width;
