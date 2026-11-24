@@ -1,6 +1,8 @@
 {
 	"name": "mudtasks",
 	"version": "0.0.1",
+	"license": "MIT",
+	"author": "Ufuk Furkan Öztürk",
 	"private": true,
 	"description": "A terminal task manager built with mudui",
 	"type": "module",

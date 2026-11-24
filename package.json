@@ -1,6 +1,8 @@
 {
 	"name": "mudui",
 	"version": "0.0.1",
+	"license": "MIT",
+	"author": "Ufuk Furkan Öztürk",
 	"keywords": [
 		"svelte",
 		"terminal",

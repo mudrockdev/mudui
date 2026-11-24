@@ -1,6 +1,8 @@
 {
 	"name": "create-mudui",
 	"version": "0.0.1",
+	"license": "MIT",
+	"author": "Ufuk Furkan Öztürk",
 	"description": "Create a terminal app with Svelte and mudui",
 	"type": "module",
 	"bin": {
@@ -8,7 +10,8 @@
 	},
 	"files": [
 		"index.ts",
-		"template"
+		"template",
+		"README.md"
 	],
 	"scripts": {
 		"test": "bun test ./create.test.ts"
