@@ -1,79 +1,232 @@
-# Svelte library
+# mudui
 
-Everything you need to build a Svelte library, powered by [`sv`](https://npmjs.com/package/sv).
+A terminal renderer and UI kit for **Svelte 5**. Write ordinary Svelte components (runes, `{#each}`, `{#if}`, snippets, context, attachments) and render them to the terminal.
 
-Read more about creating a library [in the docs](https://svelte.dev/docs/kit/packaging).
+mudui is built on Svelte's experimental [custom renderer](https://svelte.dev/docs/svelte/svelte-renderer) API. Components are compiled with `experimental.customRenderer` pointing at mudui's renderer, so Svelte builds a lightweight node tree instead of DOM nodes. mudui then lays that tree out with a small flexbox engine, paints it into a cell buffer, and writes only the changed cells to the terminal.
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+```
+  mudtasks    Tasks │ Stats │ Help                         1/8 done  ██░░░░░░░░░░░░░░
+╭─ Lists ──────────────╮╭─ Inbox · 2 open ───────────────────────────────────────────╮
+│ ❯ Inbox           2  ││ [ ] Try mudtasks — press ? for help                    !!  │
+│   Work            3  ││ [ ] Add a task with n                                      │
+│   Personal        2  ││ [✓] Toggle tasks with space                                │
+│                      ││                                                            │
+╰──────────────────────╯╰────────────────────────────────────────────────────────────╯
+ n add  space toggle  e edit  d delete  / filter  ? help  q quit
 ```
 
-To recreate this project with the same configuration:
+<sub>The example app in [`examples/taskboard`](examples/taskboard), which is built with mudui.</sub>
+
+## Requirements
+
+- [Bun](https://bun.sh) (mudui compiles `.svelte` files with a Bun plugin)
+- Svelte `^5.59.0` (custom renderers are experimental in Svelte)
+
+## Quick start
 
 ```sh
-# recreate this project
-bun x sv@1.7.0 create --template library --types ts --add ai-tools="ide:claude-code,other+delivery:plugin+agentsMd:yes+optInSkills:svelte-mcp-feedback" --install bun mudui
+bun add mudui svelte
 ```
 
-## Adding features
+**bunfig.toml** registers the plugin that compiles `.svelte` files for the terminal:
 
-Add features to your project with `sv add`:
+```toml
+preload = ["mudui/preload"]
+
+[test]
+preload = ["mudui/preload"]
+```
+
+**Counter.svelte**
+
+```svelte
+<script lang="ts">
+	import { Button, Panel, useInput, useApp } from 'mudui';
+
+	let count = $state(0);
+	const app = useApp();
+
+	useInput((event) => {
+		if (event.is('q')) app.exit();
+	});
+</script>
+
+<Panel title="Counter" width={30}>
+	<txt>Count: <txt bold color="cyan">{count}</txt></txt>
+	<Button label="Increment" variant="primary" autofocus onclick={() => count++} />
+	<txt dim>q to quit</txt>
+</Panel>
+```
+
+**main.ts**
+
+```ts
+import { render } from 'mudui';
+import Counter from './Counter.svelte';
+
+const app = render(Counter);
+await app.waitUntilExit();
+```
+
+Run it with the `svelte-custom-renderer` resolve condition, so that `svelte` resolves to its client runtime (the one that supports custom renderers):
 
 ```sh
-npx sv add
+bun --conditions=svelte-custom-renderer main.ts
 ```
 
-For example, to add Tailwind CSS:
+> Put that in your `package.json` scripts. Without the condition, Svelte throws a `custom_renderer_unavailable_on_server` error that explains what's missing.
+
+## Primitives
+
+Everything is built from two elements:
+
+| Element | What it is |
+| --- | --- |
+| `<box>` | A flex container (a column by default). Holds boxes, `<txt>` and loose text. |
+| `<txt>` | A block of wrapping text. Nested `<txt>` elements are inline, which is how you style parts of a line. |
+
+```svelte
+<box row gap={1} padding="0 1" border="round" title="Status" borderColor="gray">
+	<txt bold>CPU</txt>
+	<box grow={1}></box>
+	<txt color={load > 0.8 ? 'red' : 'green'}>{Math.round(load * 100)}%</txt>
+</box>
+```
+
+Attribute names are case- and dash-insensitive (`paddingX`, `padding-x`, `paddingx`). You can also use a CSS-like `style` string: `style="border: round; padding: 0 1"`. Attributes win over `style`.
+
+**Layout**: `direction` (`row` | `column`), `row` (shorthand), `gap`, `padding` (`1`, `"1 2"`, `"1 2 3 4"`), `paddingX/Y/Top/Right/Bottom/Left`, `margin*` (same forms), `width`/`height` and their `min`/`max` variants (cells, `"50%"` or `"auto"`), `grow`, `shrink`, `align` (cross axis: `start` | `center` | `end` | `stretch`), `alignSelf`, `justify` (`start` | `center` | `end` | `between` | `around` | `evenly`), `position="absolute"` with `top`/`right`/`bottom`/`left`, `scrollX`/`scrollY`, and `hidden`.
+
+**Decoration**: `border` (`single` | `round` | `double` | `bold` | `dashed` | `ascii`), `borderColor`, `borderDim`, `borderTop`/`Right`/`Bottom`/`Left={false}`, `title`, `titleAlign`, `bg`.
+
+**Text**: `color`, `bg`, `bold`, `dim`, `italic`, `underline`, `inverse`, `strike`. On `<box>`, these are inherited by the text inside. `<txt>` also takes `wrap` (`wrap` | `truncate` | `truncate-start` | `truncate-middle` | `none`), `textAlign`, and `fill`, a string repeated to fill the rest of each line (e.g. `<txt fill="─">`).
+
+**Colors**: names (`red`, `brightBlue`, `gray`), `#rgb`, `#rrggbb`, `rgb(r,g,b)`, 256-color indices, or `default`. Truecolor is downgraded automatically when the terminal doesn't support it, and `NO_COLOR` is respected.
+
+Some defaults are tuned for terminals. Children in a column don't shrink (they overflow and are clipped). In a row they shrink, which wraps their text, unless they have a fixed `width`.
+
+## Events and focus
+
+Event attributes work like in the DOM, with DOM-like event objects that bubble up the tree:
+
+| Event | Object |
+| --- | --- |
+| `onkeydown` | `KeyEvent`: `key` (`'a'`, `'Enter'`, `'ArrowUp'`, …), `ctrl`, `alt`, `shift`, `is('ctrl+s')`, `printable` |
+| `onclick`, `onmousedown`, `onmouseup` | `MouseEvent`: `x`, `y`, `localX`, `localY`, `button` |
+| `onwheel` | `WheelEvent`: `deltaY` |
+| `onpaste` | `PasteEvent`: `text` (bracketed paste) |
+| `onfocus`, `onblur`, `onfocusin`, `onfocusout` | `FocusEvent` |
+| `onlayout` | `LayoutEvent`: `width`, `height`, `contentWidth`, `contentHeight`, fired when the element's geometry changes |
+
+Every event has `stopPropagation()` and `preventDefault()`.
+
+- Keys go to the focused element and bubble up. `focusable` elements take focus with Tab / Shift+Tab, or when clicked.
+- `autofocus` focuses an element when it first appears. `disabled` removes it from the tab order.
+- `trapfocus` keeps focus inside an element while it is rendered (used by `Modal`). When the trap goes away, focus returns to where it was.
+- If the focused element is removed, focus goes back to the previously focused element.
+- After bubbling, keys go to global handlers registered with `useInput`, most recent first. Unless prevented, Tab moves focus and ctrl+c exits.
+
+`bind:` directives, transitions and `animate:` aren't available on elements under a custom renderer (a Svelte restriction). Use component props (`bind:value` on `TextInput` works fine), and use `{@attach}` to get at elements.
+
+## Components
+
+| Component | Purpose |
+| --- | --- |
+| `Box`, `Text` | Component wrappers around `<box>` / `<txt>` |
+| `Panel` | Bordered box with a title; the border lights up while something inside has focus |
+| `Button` | `label`, `onclick`, `variant` (`default` / `primary` / `success` / `danger` / `warning`), `disabled` |
+| `TextInput` | `bind:value`, `placeholder`, `prefix`, `mask`, `maxLength`, `onsubmit`, `oncancel`. Emacs-style editing keys, paste, horizontal scrolling |
+| `Checkbox` | `bind:checked`, `label`, `onchange` |
+| `Select` | A scrolling list: `items`, `bind:value`, `height`, `onchange`, `onselect`; disabled items and hints |
+| `Tabs` | `items`, `bind:value`; arrows, numbers and clicks |
+| `Table` | `columns` (`width`, `grow`, `align`, `format`, `color`), `rows`, `bind:selected`, `onselect` |
+| `ScrollView` | Scrollable area with a scrollbar; keys, wheel, and `follow` to stick to the bottom |
+| `Modal` | Centered dialog: traps focus, closes on Escape, shadows global key handlers |
+| `ProgressBar` | Smooth (⅛-cell) progress bar with optional percentage |
+| `Spinner` | Animated spinner with several styles |
+| `Badge`, `Divider`, `Spacer`, `KeyHints`, `Scrollbar` | Small pieces |
+
+Colors come from a theme: `setTheme({ accent: 'magenta' })` in a component changes it for everything below it.
+
+## API
+
+```ts
+render(Component, {
+	props,
+	context,
+	fullscreen: true, // alternate screen; false renders inline, below the prompt
+	mouse: true, // clicks and wheel (default: same as fullscreen)
+	exitOnCtrlC: true,
+	fps: 60
+}): App;
+```
+
+`App` has `exit()`, `waitUntilExit()`, `focus(el)`, `focusNext()`, `focusPrevious()`, `focused`, `hitTest(x, y)` and `onKey(handler)`.
+
+Inside components, call these during initialisation:
+
+- `useApp()`: the `App`
+- `useInput(handler)`: global key handler
+- `useTerminalSize()`: reactive `{ columns, rows }`
+
+## Testing
+
+`mudui/testing` renders components into a virtual terminal, through the same custom renderer, layout and painting code that runs in a real terminal:
+
+```ts
+import { expect, test } from 'bun:test';
+import { renderTest } from 'mudui/testing';
+import Counter from './Counter.svelte';
+
+test('increments', () => {
+	const t = renderTest(Counter, { width: 40, height: 6 });
+	expect(t.frame()).toContain('Count: 0');
+
+	t.press('Enter'); // keys: 'Tab', 'shift+Tab', 'ctrl+c', 'ArrowUp', ...
+	expect(t.frame()).toContain('Count: 1');
+
+	t.clickText('Increment');
+	expect(t.frame()).toContain('Count: 2');
+	t.unmount();
+});
+```
+
+The harness also has `type(text)`, `paste(text)`, `click(x, y)`, `wheel(x, y, dir)`, `resize(w, h)`, `find(text)`, `focused()` and `screen()` (cells with styles, e.g. `screen().styleAt(x, y).bold`).
+
+Run tests with `bun --conditions=svelte-custom-renderer test`.
+
+## How it works
+
+```
+ .svelte ──(Bun plugin: compile with experimental.customRenderer)──▶ JS that calls the mudui renderer
+                                                                       │
+ svelte/renderer createRenderer({...})  ◀──────────────────────────────┘
+   src/lib/renderer/index.ts: createElement, insert, setAttribute, addEventListener, ...
+   src/lib/renderer/nodes.ts: TElement / TText / TComment / TFragment tree, notifies the root on change
+                                                                       │
+ runtime/app.ts: on change, schedule a frame (≤ fps)                   ▼
+   layout.ts ─ flexbox-like layout in whole cells (grow/shrink, align, justify, absolute, scroll)
+   paint.ts ── paint into a Screen (cells: grapheme, width, fg, bg, attributes), clipping
+   screen.ts ─ diff against the previous frame → cursor moves + SGR sequences
+   input.ts ── raw stdin → keys, SGR mouse, bracketed paste → DOM-like events through the tree
+```
+
+The plugin (`mudui/plugin`) sets `experimental.customRenderer` to the absolute path of the renderer module, so every component, including mudui's own, imports the same renderer instance. `mount(App, { target, renderer })` from `svelte` does the rest.
+
+## Development
 
 ```sh
-npx sv add tailwindcss
+bun install
+bun run test        # library tests (renderer, layout, input, components)
+bun run check       # svelte-check
+bun run example     # run the example app
+bun run prepack     # build dist/ and lint the package
 ```
 
-## Developing
+Inside this repo, the example resolves `mudui` to `src/lib` through the `mudui-source` export condition.
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Limitations
 
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-Everything inside `src/lib` is part of your library, everything inside `src/routes` can be used as a showcase or preview app.
-
-## Building
-
-To build your library:
-
-```sh
-npm pack
-```
-
-To create a production version of your showcase app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
-
-## Publishing
-
-Go into the `package.json` and give your package the desired name through the `"name"` option. Also consider adding a `"license"` field and point it to a `LICENSE` file which you can create from a template (one popular option is the [MIT license](https://opensource.org/license/mit/)).
-
-To publish your library to [npm](https://www.npmjs.com):
-
-```sh
-npm publish
-```
+- Bun only for now (the compile step is a Bun plugin; the runtime itself only needs Node-compatible streams).
+- Character widths use built-in East Asian Width / emoji tables. Exotic grapheme clusters may measure differently than your terminal draws them.
+- Mouse support is click, press/release and wheel. There's no drag selection.

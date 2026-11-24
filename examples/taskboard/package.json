@@ -1,0 +1,20 @@
+{
+	"name": "mudtasks",
+	"version": "0.0.1",
+	"private": true,
+	"description": "A terminal task manager built with mudui",
+	"type": "module",
+	"bin": {
+		"mudtasks": "./src/main.ts"
+	},
+	"scripts": {
+		"start": "bun --conditions=svelte-custom-renderer --conditions=mudui-source src/main.ts",
+		"test": "bun --conditions=svelte-custom-renderer --conditions=mudui-source test"
+	},
+	"dependencies": {
+		"mudui": "workspace:*"
+	},
+	"peerDependencies": {
+		"svelte": "^5.59.0"
+	}
+}

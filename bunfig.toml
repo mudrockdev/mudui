@@ -1,2 +1,6 @@
 [install]
 minimumReleaseAge = "3d"
+
+[test]
+preload = ["./src/lib/bun/preload.ts"]
+root = "./tests"

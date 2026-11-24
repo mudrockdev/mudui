@@ -2,7 +2,11 @@
 	"name": "mudui",
 	"version": "0.0.1",
 	"keywords": [
-		"svelte"
+		"svelte",
+		"terminal",
+		"tui",
+		"cli",
+		"custom-renderer"
 	],
 	"files": [
 		"dist",
@@ -22,7 +26,29 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"svelte": "./dist/index.js"
+			"mudui-source": "./src/lib/index.ts",
+			"svelte": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./renderer": {
+			"types": "./dist/renderer/index.d.ts",
+			"mudui-source": "./src/lib/renderer/index.ts",
+			"default": "./dist/renderer/index.js"
+		},
+		"./testing": {
+			"types": "./dist/testing/index.d.ts",
+			"mudui-source": "./src/lib/testing/index.ts",
+			"default": "./dist/testing/index.js"
+		},
+		"./plugin": {
+			"types": "./dist/bun/plugin.d.ts",
+			"mudui-source": "./src/lib/bun/plugin.ts",
+			"default": "./dist/bun/plugin.js"
+		},
+		"./preload": {
+			"types": "./dist/bun/preload.d.ts",
+			"mudui-source": "./src/lib/bun/preload.ts",
+			"default": "./dist/bun/preload.js"
 		}
 	},
 	"scripts": {
@@ -31,21 +57,28 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"prepack": "svelte-kit sync && svelte-package && publint",
+		"test": "bun --conditions=svelte-custom-renderer test",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"example": "bun run --cwd examples/taskboard start"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^8.0.1",
 		"@sveltejs/kit": "^3.2.0",
 		"@sveltejs/package": "^3.0.2",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@types/bun": "npm:bun-types@1.4.5",
 		"publint": "^0.3.25",
-		"svelte": "^5.57.3",
+		"svelte": "^5.59.1",
 		"svelte-check": "^4.7.8",
 		"typescript": "^6.0.3",
 		"vite": "^8.3.8"
 	},
 	"peerDependencies": {
-		"svelte": "^5.0.0"
-	}
+		"svelte": "^5.59.0"
+	},
+	"description": "A terminal renderer and UI kit for Svelte 5, built on Svelte custom renderers",
+	"workspaces": [
+		"examples/*"
+	]
 }
