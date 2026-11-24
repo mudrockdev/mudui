@@ -6,6 +6,7 @@
  */
 
 import type { Rect } from "./geometry.js";
+import type { ComputedStyle } from "./style.js";
 import type { TextLine } from "./text.js";
 
 export type Listener = (event: any) => unknown;
@@ -119,6 +120,12 @@ export class TElement extends TContainer {
 
   /** Bumped whenever an attribute changes, used to cache parsed styles */
   version = 0;
+  /** Parsed styles for `version` (internal, managed by `computeStyle`) */
+  computed: {
+    version: number;
+    style: ComputedStyle;
+    attrs: Map<string, unknown>;
+  } | null = null;
 
   constructor(name: string) {
     super();
@@ -168,13 +175,11 @@ export class TElement extends TContainer {
     return out;
   }
 
+  /** All descendant elements in tree order (a snapshot, taken when iteration starts) */
   *descendants(): IterableIterator<TElement> {
-    for (const child of this.children()) {
-      if (child instanceof TElement) {
-        yield child;
-        yield* child.descendants();
-      }
-    }
+    const out: TElement[] = [];
+    collectElements(this, out);
+    yield* out;
   }
 
   /** Called by attachments etc. to request a new frame after out-of-band changes */
@@ -220,3 +225,13 @@ export class TComment extends TNodeBase {
 }
 
 export type TChild = TElement | TText | TComment;
+
+/** Appends the descendant elements of `element` to `out`, in tree order */
+export function collectElements(element: TElement, out: TElement[]): void {
+  for (let child = element.first; child; child = child.next) {
+    if (child instanceof TElement) {
+      out.push(child);
+      collectElements(child, out);
+    }
+  }
+}

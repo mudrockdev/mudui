@@ -18,6 +18,11 @@ export interface Terminal {
   onData(listener: (data: string) => void): () => void;
   /** Subscribes to size changes. Returns an unsubscribe function. */
   onResize(listener: () => void): () => void;
+  /**
+   * Subscribes to the terminal going away (hangup, closed input or output).
+   * Returns an unsubscribe function.
+   */
+  onClose?(listener: () => void): () => void;
   /** Prepares the terminal (raw mode, alternate screen, mouse reporting, ...) */
   setup(options: TerminalSetup): void;
   /** Undoes `setup` */
@@ -77,6 +82,14 @@ export class NodeTerminal implements Terminal {
   #options: TerminalSetup | null = null;
   #was_raw = false;
   #restore_on_exit = () => this.restore();
+  /** Set once the terminal is gone (e.g. its window closed): writes would fail */
+  #closed = false;
+  #close_listeners = new Set<() => void>();
+  #on_close = () => {
+    if (this.#closed) return;
+    this.#closed = true;
+    for (const listener of [...this.#close_listeners]) listener();
+  };
 
   constructor(options: NodeTerminalOptions = {}) {
     this.stdin = options.stdin ?? process.stdin;
@@ -95,13 +108,35 @@ export class NodeTerminal implements Terminal {
   }
 
   write(data: string): void {
-    this.stdout.write(data);
+    if (this.#closed) return;
+    try {
+      this.stdout.write(data);
+    } catch {
+      // EIO / EPIPE: the terminal is gone
+      this.#on_close();
+    }
   }
 
   onData(listener: (data: string) => void): () => void {
     const handler = (chunk: Buffer | string) => listener(chunk.toString());
     this.stdin.on("data", handler);
     return () => this.stdin.off("data", handler);
+  }
+
+  onClose(listener: () => void): () => void {
+    if (this.#close_listeners.size === 0) {
+      this.stdin.on("end", this.#on_close);
+      this.stdin.on("error", this.#on_close);
+      this.stdout.on("error", this.#on_close);
+    }
+    this.#close_listeners.add(listener);
+    return () => {
+      this.#close_listeners.delete(listener);
+      if (this.#close_listeners.size > 0) return;
+      this.stdin.off("end", this.#on_close);
+      this.stdin.off("error", this.#on_close);
+      this.stdout.off("error", this.#on_close);
+    };
   }
 
   onResize(listener: () => void): () => void {
@@ -137,7 +172,13 @@ export class NodeTerminal implements Terminal {
     if (options.fullscreen) out += sequences.altScreenOff;
     this.write(out);
 
-    if (this.stdin.isTTY) this.stdin.setRawMode(this.#was_raw);
+    // after a hangup the tty is gone and these fail (EIO); still stop reading,
+    // or the process keeps polling a dead terminal
+    try {
+      if (this.stdin.isTTY && !this.#closed) this.stdin.setRawMode(this.#was_raw);
+    } catch {
+      this.#closed = true;
+    }
     this.stdin.pause();
   }
 }

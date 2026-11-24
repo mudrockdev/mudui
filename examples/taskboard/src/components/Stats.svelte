@@ -4,6 +4,7 @@
     Divider,
     Panel,
     ProgressBar,
+    ScrollView,
     Sparkline,
     Table,
     getTheme,
@@ -54,7 +55,9 @@
   );
 </script>
 
-<box row grow={1} gap={1}>
+<!-- shrink: in a short terminal the row takes the free space, not its content's
+     height (which would push the status bar off screen); the side panels scroll -->
+<box row grow={1} shrink={1} gap={1}>
   <Panel title="Progress by list" grow={1} gap={1}>
     {#each store.lists as list (list)}
       {@const tasks = store.tasksIn(list)}
@@ -68,21 +71,23 @@
       </box>
     {/each}
   </Panel>
-  <box width={36} gap={1}>
-    <Panel title="By priority">
-      <Table {columns} {rows} focusable={false} />
-    </Panel>
-    <Panel title="Open by list">
-      <BarChart data={open_by_list} color={theme.accent} />
-    </Panel>
-    <Panel title="Momentum">
-      <Divider title={`finished, last ${DAYS} days`} />
-      <box row gap={1}>
-        <Sparkline data={finished} width={DAYS} color={theme.success} min={0} />
-        <txt color={theme.muted}>{finished_total} total</txt>
-      </box>
-      <Divider title="estimated work left" />
-      <txt>{hours_left ? `${hours_left}h` : "no estimates"}</txt>
-    </Panel>
+  <box width={36}>
+    <ScrollView grow={1} gap={1}>
+      <Panel title="By priority">
+        <Table {columns} {rows} focusable={false} />
+      </Panel>
+      <Panel title="Open by list">
+        <BarChart data={open_by_list} color={theme.accent} />
+      </Panel>
+      <Panel title="Momentum">
+        <Divider title={`finished, last ${DAYS} days`} />
+        <box row gap={1}>
+          <Sparkline data={finished} width={DAYS} color={theme.success} min={0} />
+          <txt color={theme.muted}>{finished_total} total</txt>
+        </box>
+        <Divider title="estimated work left" />
+        <txt>{hours_left ? `${hours_left}h` : "no estimates"}</txt>
+      </Panel>
+    </ScrollView>
   </box>
 </box>

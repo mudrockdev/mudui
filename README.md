@@ -324,42 +324,42 @@ Frames (one update + full render; time in ms)
 
 scenario        size    mount   mean    p50    p99   max  max fps  bytes/frame
 ──────────────  ──────  ─────  ─────  ─────  ─────  ────  ───────  ───────────
-counter         80x24   0.544  0.023  0.021  0.042  1.07   43,828           21
-dashboard/idle  160x48   5.62   1.56   1.46   2.49  2.95      639            0
-dashboard       160x48   5.07   1.90   1.82   3.00  3.46      526          840
-typing          80x24   0.524  0.057  0.052  0.102  1.38   17,619           38
-log/10k         120x40   2.32  0.805  0.787   1.64  2.36    1,243         2.0K
-list/1k         120x40   24.7   12.9   12.9   17.9  18.8       78         1.6K
-grid/full       200x60   23.0   19.4   19.3   22.0  22.0       52        53.6K
+counter         80x24   0.425  0.018  0.016  0.035  1.40   55,734           21
+dashboard/idle  160x48   3.06  0.190  0.179  0.367  1.26    5,262            0
+dashboard       160x48   2.10  0.388  0.369  0.661  4.95    2,580          843
+typing          80x24   0.247  0.037  0.034  0.068  2.01   27,130           38
+log/10k         120x40   1.87  0.147  0.141  0.255  2.85    6,794         2.0K
+list/1k         120x40   10.6   2.23   2.11   4.15  8.47      449         1.7K
+grid/full       200x60   5.79   4.59   4.34   9.87  19.8      218        53.6K
 
 Where frame time goes (mean ms, share of frame)
 
 scenario            svelte      layout       paint        diff     runtime
 ──────────────  ──────────  ──────────  ──────────  ──────────  ──────────
-counter         0.001   3%  0.007  29%  0.006  25%  0.009  40%  0.001   3%
-dashboard/idle  0.000   0%   1.15  74%  0.227  14%  0.038   2%  0.148   9%
-dashboard       0.075   4%   1.36  72%  0.263  14%  0.069   4%  0.133   7%
-log/10k         0.044   5%  0.382  47%  0.086  11%  0.233  29%  0.059   7%
-list/1k         0.042   0%   11.0  86%  0.594   5%  0.088   1%   1.11   9%
-grid/full        1.24   6%   11.2  58%   2.64  14%   4.05  21%  0.227   1%
+counter         0.001   4%  0.003  15%  0.005  26%  0.009  51%  0.001   4%
+dashboard/idle  0.000   0%  0.058  30%  0.087  46%  0.035  18%  0.010   5%
+dashboard       0.057  15%  0.100  26%  0.105  27%  0.040  10%  0.086  22%
+log/10k         0.038  26%  0.029  20%  0.038  26%  0.039  27%  0.003   2%
+list/1k         0.017   1%   1.98  87%  0.233  10%  0.051   2%  0.000   0%
+grid/full        1.08  22%   2.87  60%  0.279   6%  0.587  12%  0.000   0%
 
 Resize (one size change + full render, sweeping the size like a drag; time in ms)
 
-scenario          size            mean    p50    p99    max  max fps  bytes/frame  passes
-────────────────  ─────────────  ─────  ─────  ─────  ─────  ───────  ───────────  ──────
-resize/counter    40x12–80x24    0.067  0.062  0.152  0.869   14,855         1.3K     1.0
-resize/dashboard  120x36–160x48   3.43   3.34   4.86   5.14      292         8.2K     2.0
-resize/log        80x28–120x40   0.928  0.908   1.64   2.27    1,077         4.1K     1.0
-resize/list       80x28–120x40    12.7   12.7   17.4   17.8       79         4.3K     1.0
-resize/grid       160x48–200x60   15.8   13.8   27.2   27.2       63        42.7K     1.2
+scenario          size            mean    p50    p99   max  max fps  bytes/frame  passes
+────────────────  ─────────────  ─────  ─────  ─────  ────  ───────  ───────────  ──────
+resize/counter    40x12–80x24    0.016  0.015  0.029  1.78   64,508         1.3K     1.0
+resize/dashboard  120x36–160x48  0.504  0.486  0.804  1.98    1,983         8.4K     2.0
+resize/log        80x28–120x40   0.132  0.096  0.288  1.41    7,602         4.7K     1.3
+resize/list       80x28–120x40    1.82   1.68   3.81  4.92      549         4.3K     1.0
+resize/grid       160x48–200x60  0.851  0.715   1.83  2.43    1,174        44.0K     1.2
 
 Resize storm (resize every 4ms through the 60fps scheduler, like dragging a window)
 
 scene      sizes          events/s  frames/s  staleness p50      p99  blank p50      max  blank %  cpu  bytes/frame  settled
 ─────────  ─────────────  ────────  ────────  ─────────────  ───────  ─────────  ───────  ───────  ───  ───────────  ───────
-dashboard  120x36–160x48       200      50.0        19.9 ms  20.7 ms    18.3 ms  18.9 ms      91%  23%         8.4K  WRONG
-list       80x28–120x40        140      35.0        28.2 ms  32.1 ms    26.8 ms  30.3 ms      94%  53%         4.4K  ok
-grid       160x48–200x60       104      25.8        39.1 ms  46.7 ms    28.5 ms  32.5 ms      73%  65%        44.7K  ok
+dashboard  120x36–160x48       231      58.0        17.2 ms  18.0 ms    16.5 ms  18.0 ms      95%  12%         8.7K  ok     
+list       80x28–120x40        200      50.0        19.9 ms  21.3 ms    19.5 ms  20.8 ms      97%  23%         4.3K  ok     
+grid       160x48–200x60       223      55.5        17.7 ms  19.4 ms    16.8 ms  19.7 ms      94%  16%        44.0K  ok     
 
 staleness: oldest unrendered resize → frame. blank: the clear a resize writes → next frame.
 
@@ -367,10 +367,10 @@ Scheduler (dashboard 160x48, state changes every 1ms)
 
 fps cap  achieved fps  frame interval p50      p99      max  cpu  bytes/frame
 ───────  ────────────  ──────────────────  ───────  ───────  ───  ───────────
-     30          29.1             35.0 ms  35.4 ms  35.4 ms  22%         1.6K
-     60          56.4             17.8 ms  18.8 ms  18.9 ms  24%         1.7K
-    120         102.4             9.82 ms  10.5 ms  10.9 ms  34%         1.6K
-    max         345.2             2.81 ms  3.65 ms  6.91 ms  73%         1.1K
+     30          30.0             33.8 ms  38.1 ms  38.1 ms  20%         1.6K
+     60          60.2             16.7 ms  17.7 ms  17.9 ms  19%         1.7K
+    120         117.2             8.55 ms  9.32 ms  9.42 ms  20%         1.6K
+    max         467.0             2.11 ms  3.17 ms  7.37 ms  31%         1.1K
 ```
 
 ## Limitations

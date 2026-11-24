@@ -3,7 +3,8 @@
  * they stay fixed.
  */
 import { describe, expect, test } from "bun:test";
-import { toastStore } from "../src/lib/index.ts";
+import { NodeTerminal, render, toastStore } from "../src/lib/index.ts";
+import Counter from "./fixtures/Counter.svelte";
 import { renderTest } from "../src/lib/testing/index.ts";
 import Growing from "./fixtures/Growing.svelte";
 
@@ -92,5 +93,67 @@ describe("Toaster", () => {
     t.resize(50, 30); // more room: more toasts
     expect(t.frame()).toContain("message 1");
     t.unmount();
+  });
+});
+
+describe("the terminal going away (window closed, ssh dropped)", () => {
+  // a tty whose writes fail with EIO once it's closed, like a deleted pty
+  function dead_tty() {
+    const { PassThrough } = require("node:stream") as typeof import("node:stream");
+    const stdin = Object.assign(new PassThrough(), {
+      isTTY: true,
+      isRaw: false,
+      setRawMode(this: { isRaw: boolean }, raw: boolean) {
+        if (closed) throw new Error("setRawMode failed with errno: 5");
+        this.isRaw = raw;
+        return this;
+      },
+    });
+    let closed = false;
+    const stdout = Object.assign(new PassThrough(), {
+      isTTY: true,
+      columns: 40,
+      rows: 10,
+    });
+    stdout.resume();
+    const write = stdout.write.bind(stdout);
+    stdout.write = ((chunk: string) => {
+      if (closed) throw Object.assign(new Error("EIO: i/o error, write"), { code: "EIO" });
+      return write(chunk);
+    }) as typeof stdout.write;
+    return {
+      stdin: stdin as unknown as NodeJS.ReadStream,
+      stdout: stdout as unknown as NodeJS.WriteStream,
+      close() {
+        closed = true;
+        stdin.end();
+      },
+    };
+  }
+
+  test("closed input exits the app, and waitUntilExit settles despite EIO", async () => {
+    const tty = dead_tty();
+    const app = render(Counter, {
+      terminal: new NodeTerminal(tty),
+      handleErrors: false,
+    });
+    const exited = app.waitUntilExit();
+    tty.close();
+    await exited; // used to throw from restore() and never resolve
+    expect(app.exited).toBe(true);
+    expect(tty.stdin.isPaused()).toBe(true);
+  });
+
+  test("SIGHUP after the tty is gone still exits cleanly", async () => {
+    const tty = dead_tty();
+    const app = render(Counter, {
+      terminal: new NodeTerminal(tty),
+      handleErrors: false,
+    });
+    const exited = app.waitUntilExit();
+    tty.close();
+    process.emit("SIGHUP", "SIGHUP");
+    await exited;
+    expect(app.exited).toBe(true);
   });
 });

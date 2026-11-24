@@ -78,11 +78,36 @@ function paint_border(n: LayoutNode, screen: Screen, clip: Rect) {
   }
 }
 
+function write_chars(
+  screen: Screen,
+  x: number,
+  y: number,
+  chars: string[],
+  style: TextStyle,
+  clip: Rect,
+): number {
+  for (const g of chars) {
+    const w = graphemeWidth(g);
+    if (w === 0) continue;
+    screen.put(x, y, g, w, style, clip);
+    x += w;
+  }
+  return x;
+}
+
 function paint_text(n: LayoutNode, screen: Screen, clip: Rect) {
   const inner = n.inner;
-  n.lines.forEach((line, row) => {
+  const lines = n.lines;
+  // only the rows that are both inside the text box and visible
+  const first = Math.max(0, clip.y - inner.y);
+  const last = Math.min(
+    lines.length,
+    inner.height,
+    clip.y + clip.height - inner.y,
+  );
+  for (let row = first; row < last; row++) {
+    const line = lines[row];
     const y = inner.y + row;
-    if (y >= inner.y + inner.height) return;
     const free = inner.width - line.width;
     let x =
       n.style.textAlign === "center"
@@ -91,8 +116,10 @@ function paint_text(n: LayoutNode, screen: Screen, clip: Rect) {
           ? inner.x + Math.max(0, free)
           : inner.x;
     for (const segment of line.segments)
-      x = write(screen, x, y, segment.text, segment.style, clip);
-  });
+      x = segment.chars
+        ? write_chars(screen, x, y, segment.chars, segment.style, clip)
+        : write(screen, x, y, segment.text, segment.style, clip);
+  }
 }
 
 export function paint(n: LayoutNode, screen: Screen, clip: Rect): void {

@@ -6,7 +6,7 @@ import { flushSync, mount, unmount, type Component } from "svelte";
 import { createSubscriber } from "svelte/reactivity";
 import { contains } from "../renderer/geometry.js";
 import { computeLayout } from "../renderer/layout.js";
-import { TElement, TRoot } from "../renderer/nodes.js";
+import { collectElements, TElement, TRoot } from "../renderer/nodes.js";
 import { paintScreen } from "../renderer/paint.js";
 import renderer from "../renderer/index.js";
 import { Screen } from "../renderer/screen.js";
@@ -158,6 +158,10 @@ export class App {
       this.terminal.onData((data) => this.#on_data(data)),
       this.terminal.onResize(() => this.#on_resize()),
     );
+    // the terminal went away (window closed, ssh dropped): exit, so that
+    // `waitUntilExit()` resolves and the app can save its state
+    const off_close = this.terminal.onClose?.(() => this.exit());
+    if (off_close) this.#cleanup.push(off_close);
 
     const context = new Map(options.context ?? []);
     context.set(APP_KEY, this);
@@ -253,6 +257,11 @@ export class App {
   }
 
   #after_frame() {
+    // every rendered element, in tree order (one walk instead of one per step)
+    const all: TElement[] = [];
+    collectElements(this.root, all);
+    const rendered = all.filter((element) => element.layout);
+
     // focus: drop focus from removed/hidden elements, honor traps and autofocus
     let lost = false;
     if (this.focused && !this.#can_focus(this.focused)) {
@@ -260,7 +269,7 @@ export class App {
       lost = true;
     }
 
-    const trap = this.#find_trap();
+    const trap = this.#find_trap(rendered);
     if (trap !== this.#trap) {
       if (trap && !this.#trap) this.#before_trap = this.focused;
       const restore = !trap ? this.#before_trap : null;
@@ -291,8 +300,8 @@ export class App {
     // an element with `autofocus` takes focus the first time it is rendered
     // (the first one wins if several appear at once)
     let autofocus: TElement | null = null;
-    for (const element of this.root.descendants()) {
-      if (!element.layout || this.#autofocused.has(element)) continue;
+    for (const element of rendered) {
+      if (this.#autofocused.has(element)) continue;
       const attrs = normalizedAttributes(element);
       if (
         attrs.has("autofocus") &&
@@ -307,7 +316,7 @@ export class App {
     if (!this.focused && this.#trap) this.focusNext();
 
     // layout events
-    for (const element of this.root.descendants()) {
+    for (const element of rendered) {
       if (!element.hasListener("layout") || !element.layout) continue;
       const l = element.layout;
       const key = `${l.x},${l.y},${l.width},${l.height},${l.contentWidth},${l.contentHeight}`;
@@ -327,10 +336,9 @@ export class App {
     }
   }
 
-  #find_trap(): TElement | null {
+  #find_trap(rendered: TElement[]): TElement | null {
     let trap: TElement | null = null;
-    for (const element of this.root.descendants()) {
-      if (!element.layout) continue;
+    for (const element of rendered) {
       const value = normalizedAttributes(element).get("trapfocus");
       if (value !== undefined && value !== false) trap = element;
     }
@@ -560,8 +568,13 @@ export class App {
     }
     this.root.onchange = null;
 
-    if (!this.fullscreen && this.#inline_height > 0) this.terminal.write("\n");
-    this.terminal.restore();
+    try {
+      if (!this.fullscreen && this.#inline_height > 0)
+        this.terminal.write("\n");
+      this.terminal.restore();
+    } catch {
+      // a broken terminal must not keep `waitUntilExit()` from settling
+    }
 
     if (error) this.#reject_exit(error);
     else this.#resolve_exit();

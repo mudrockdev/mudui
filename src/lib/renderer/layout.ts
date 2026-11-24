@@ -17,8 +17,7 @@ import {
   type TextStyle,
 } from "./style.js";
 import {
-  layoutText,
-  maxContentWidth,
+  PreparedText,
   stringWidth,
   type TextLine,
   type TextRun,
@@ -38,14 +37,36 @@ export interface LayoutNode {
   lines: TextLine[];
   contentWidth: number;
   contentHeight: number;
-  measured: Map<number, { width: number; height: number }>;
+  /** Measured sizes by available width: the last one, then older ones */
+  measuredFor: number;
+  measuredSize: { width: number; height: number } | null;
+  measured: Map<number, { width: number; height: number }> | null;
+  /** Border and padding widths */
+  chrome: Chrome;
+  /** Children that aren't absolutely positioned (computed on first use) */
+  inFlow: LayoutNode[] | null;
+  /** For text nodes: the runs split into glyphs, with cached line layouts */
+  prepared: PreparedText | null;
 }
-
-const TEXT_ELEMENTS = new Set(["txt", "text", "span"]);
 
 export function isTextElement(element: TElement): boolean {
-  return TEXT_ELEMENTS.has(element.name);
+  const name = element.name;
+  return name === "txt" || name === "text" || name === "span";
 }
+
+/**
+ * Prepared text from the previous frame, reused while the text is unchanged:
+ * per `<txt>` element, and per box for its anonymous text blocks (in order).
+ */
+const text_cache = new WeakMap<TElement, PreparedText>();
+const anonymous_cache = new WeakMap<TElement, PreparedText[]>();
+
+function prepare(runs: TextRun[], previous: PreparedText | undefined) {
+  return previous?.matches(runs) ? previous : new PreparedText(runs);
+}
+
+const NO_STYLE: TextStyle = {};
+const NO_RECT: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
 const ANONYMOUS_STYLE: ComputedStyle = computeStyle(new TElement("txt"));
 
@@ -61,17 +82,19 @@ function node(
     runs: [],
     inherited,
     children: [],
-    rect: { x: 0, y: 0, width: 0, height: 0 },
-    inner: { x: 0, y: 0, width: 0, height: 0 },
+    // replaced (never modified) when the node is laid out
+    rect: NO_RECT,
+    inner: NO_RECT,
     lines: [],
     contentWidth: 0,
     contentHeight: 0,
-    measured: new Map(),
+    measuredFor: -1,
+    measuredSize: null,
+    measured: null,
+    chrome: style.insets,
+    inFlow: null,
+    prepared: null,
   };
-}
-
-function own_text_style(style: ComputedStyle): TextStyle {
-  return style.bg === undefined ? style.text : { ...style.text, bg: style.bg };
 }
 
 function collect_runs(
@@ -79,7 +102,7 @@ function collect_runs(
   inherited: TextStyle,
   runs: TextRun[],
 ) {
-  for (const child of element.children()) {
+  for (let child = element.first; child; child = child.next) {
     if (child instanceof TText) {
       if (child.data) runs.push({ text: child.data, style: inherited });
     } else if (child instanceof TElement) {
@@ -87,7 +110,7 @@ function collect_runs(
       if (style.hidden) continue;
       collect_runs(
         child,
-        mergeTextStyle(inherited, own_text_style(style)),
+        mergeTextStyle(inherited, style.inlineText),
         runs,
       );
     }
@@ -97,16 +120,14 @@ function collect_runs(
 function clear_layout(element: TElement) {
   element.layout = null;
   element.lines = null;
-  for (const child of element.descendants()) {
-    child.layout = null;
-    child.lines = null;
-  }
+  for (let child = element.first; child; child = child.next)
+    if (child instanceof TElement) clear_layout(child);
 }
 
 /** Builds the layout tree for `element` and its descendants */
 export function build(
   element: TElement,
-  inherited: TextStyle = {},
+  inherited: TextStyle = NO_STYLE,
 ): LayoutNode | null {
   const style = computeStyle(element);
 
@@ -116,32 +137,40 @@ export function build(
   }
 
   if (isTextElement(element)) {
-    const own = mergeTextStyle(inherited, own_text_style(style));
+    const own = mergeTextStyle(inherited, style.inlineText);
     const n = node(element, style, own);
     n.text = true;
     collect_runs(element, own, n.runs);
+    n.prepared = prepare(n.runs, text_cache.get(element));
+    text_cache.set(element, n.prepared);
     // nested inline elements are part of this element's box
-    for (const child of element.descendants()) child.layout = null;
+    for (let child = element.first; child; child = child.next)
+      if (child instanceof TElement) clear_layout(child);
     return n;
   }
 
   const text_style = mergeTextStyle(inherited, style.text);
   const n = node(element, style, text_style);
-  let pending: string[] = [];
+  let pending = "";
+  const previous = anonymous_cache.get(element);
+  let anonymous: PreparedText[] | undefined;
 
   const flush = () => {
-    const text = pending.join("").trim();
-    pending = [];
+    const text = pending.trim();
+    pending = "";
     if (!text) return;
     const anon = node(null, ANONYMOUS_STYLE, text_style);
     anon.text = true;
     anon.runs = [{ text, style: text_style }];
+    anonymous ??= [];
+    anon.prepared = prepare(anon.runs, previous?.[anonymous.length]);
+    anonymous.push(anon.prepared);
     n.children.push(anon);
   };
 
-  for (const child of element.children()) {
+  for (let child = element.first; child; child = child.next) {
     if (child instanceof TText) {
-      pending.push(child.data);
+      pending += child.data;
     } else if (child instanceof TElement) {
       flush();
       const c = build(child, text_style);
@@ -149,28 +178,19 @@ export function build(
     }
   }
   flush();
+  if (anonymous) anonymous_cache.set(element, anonymous);
+  else if (previous) anonymous_cache.delete(element);
 
   return n;
 }
 
-interface Chrome {
+export interface Chrome {
   top: number;
   right: number;
   bottom: number;
   left: number;
 }
 
-function chrome(style: ComputedStyle): Chrome {
-  const [pt, pr, pb, pl] = style.padding;
-  const b = style.border;
-  const s = style.borderSides;
-  return {
-    top: pt + (b && s.top ? 1 : 0),
-    right: pr + (b && s.right ? 1 : 0),
-    bottom: pb + (b && s.bottom ? 1 : 0),
-    left: pl + (b && s.left ? 1 : 0),
-  };
-}
 
 function clamp(
   value: number,
@@ -185,7 +205,14 @@ function clamp(
   return Math.max(0, value);
 }
 
-const flow = (n: LayoutNode) => n.children.filter((c) => !c.style.absolute);
+function flow(n: LayoutNode): LayoutNode[] {
+  if (n.inFlow) return n.inFlow;
+  let all = true;
+  for (const c of n.children) if (c.style.absolute) all = false;
+  return (n.inFlow = all
+    ? n.children
+    : n.children.filter((c) => !c.style.absolute));
+}
 
 /** Natural size of the node when given `available` columns (and an optional definite height base) */
 export function measure(
@@ -193,11 +220,12 @@ export function measure(
   available: number,
 ): { width: number; height: number } {
   available = Math.max(0, Math.floor(available));
-  const cached = n.measured.get(available);
+  if (n.measuredFor === available) return n.measuredSize!;
+  const cached = n.measured?.get(available);
   if (cached) return cached;
 
   const s = n.style;
-  const c = chrome(s);
+  const c = n.chrome;
   const cx = c.left + c.right;
   const cy = c.top + c.bottom;
   const fixed_width = resolve(s.width, available);
@@ -209,10 +237,9 @@ export function measure(
   if (n.text) {
     const outer = fixed_width ?? available;
     const inner = Math.max(0, outer - cx);
-    const natural = maxContentWidth(n.runs);
-    const width = Math.min(natural, inner);
-    const lines = layoutText(
-      n.runs,
+    const prepared = n.prepared ?? new PreparedText(n.runs);
+    const width = Math.min(prepared.natural, inner);
+    const lines = prepared.layout(
       s.wrap === "wrap" ? Math.max(1, width) : width,
       s.wrap,
     );
@@ -251,7 +278,12 @@ export function measure(
     };
   }
 
-  n.measured.set(available, result);
+  if (n.measuredSize) {
+    n.measured ??= new Map();
+    n.measured.set(n.measuredFor, n.measuredSize);
+  }
+  n.measuredFor = available;
+  n.measuredSize = result;
   return result;
 }
 
@@ -267,7 +299,7 @@ function viewport_basis(item: LayoutNode, column: boolean): number | undefined {
   if (s.grow <= 0) return undefined;
   if (column ? !s.scrollsY || s.height : !s.scrollsX || s.width)
     return undefined;
-  const c = chrome(s);
+  const c = item.chrome;
   return column ? c.top + c.bottom : c.left + c.right;
 }
 
@@ -296,10 +328,11 @@ function measure_content(
   const widths = row_widths(n, items, inner_width);
   let width = gaps;
   let height = 0;
-  items.forEach((item, i) => {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
     width += widths[i] + margin_x(item);
     height = Math.max(height, measure(item, widths[i]).height + margin_y(item));
-  });
+  }
   return { width, height };
 }
 
@@ -310,16 +343,17 @@ function row_widths(
   inner_width: number,
 ): number[] {
   const gaps = n.style.gap * (items.length - 1);
-  const basis = items.map((item) => {
-    const fixed = resolve(item.style.width, inner_width);
-    return (
-      fixed ??
+  const basis: number[] = new Array(items.length);
+  let margins = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    margins += margin_x(item);
+    basis[i] =
+      resolve(item.style.width, inner_width) ??
       viewport_basis(item, false) ??
-      measure(item, Math.max(0, inner_width - margin_x(item))).width
-    );
-  });
-  const available =
-    inner_width - gaps - items.reduce((sum, item) => sum + margin_x(item), 0);
+      measure(item, Math.max(0, inner_width - margin_x(item))).width;
+  }
+  const available = inner_width - gaps - margins;
   return distribute(
     items,
     basis,
@@ -342,10 +376,14 @@ function distribute(
   min_of: (item: LayoutNode) => number,
   max_of: (item: LayoutNode) => number,
 ): number[] {
-  const sizes = basis.map((b, i) =>
-    Math.min(Math.max(b, min_of(items[i])), max_of(items[i])),
-  );
-  let free = available - sizes.reduce((a, b) => a + b, 0);
+  const sizes = basis;
+  let total_size = 0;
+  for (let i = 0; i < items.length; i++) {
+    sizes[i] = Math.min(Math.max(basis[i], min_of(items[i])), max_of(items[i]));
+    total_size += sizes[i];
+  }
+  let free = available - total_size;
+  if (Math.abs(free) <= 0.001) return round_preserving_sum(sizes);
   const frozen = new Set<number>();
 
   for (let pass = 0; pass < 4 && Math.abs(free) > 0.001; pass++) {
@@ -383,6 +421,14 @@ function distribute(
 
 /** Rounds to integers while keeping the (rounded) total */
 function round_preserving_sum(values: number[]): number[] {
+  // usually everything is whole already
+  let whole = true;
+  for (const v of values)
+    if (v < 0 || !Number.isInteger(v)) {
+      whole = false;
+      break;
+    }
+  if (whole) return values;
   const floors = values.map((v) => Math.floor(Math.max(0, v) + 1e-9));
   let remainder =
     Math.round(values.reduce((a, b) => a + Math.max(0, b), 0)) -
@@ -432,6 +478,11 @@ function fill_lines(n: LayoutNode) {
   const fill = n.style.fill!;
   const fill_width = stringWidth(fill);
   if (fill_width === 0) return;
+  // the lines are shared with the text cache: copy before changing them
+  n.lines = n.lines.map((line) => ({
+    segments: [...line.segments],
+    width: line.width,
+  }));
   for (const line of n.lines) {
     const count = Math.floor((n.inner.width - line.width) / fill_width);
     if (count <= 0) continue;
@@ -447,7 +498,7 @@ function fill_lines(n: LayoutNode) {
 /** Positions `n` at `rect` and lays out its descendants */
 export function layout(n: LayoutNode, rect: Rect): void {
   n.rect = rect;
-  const c = chrome(n.style);
+  const c = n.chrome;
   n.inner = {
     x: rect.x + c.left,
     y: rect.y + c.top,
@@ -456,7 +507,8 @@ export function layout(n: LayoutNode, rect: Rect): void {
   };
 
   if (n.text) {
-    n.lines = layoutText(n.runs, n.inner.width, n.style.wrap);
+    n.prepared ??= new PreparedText(n.runs);
+    n.lines = n.prepared.layout(n.inner.width, n.style.wrap);
     if (n.style.fill) fill_lines(n);
     n.contentWidth = n.lines.reduce(
       (max, line) => Math.max(max, line.width),
@@ -474,36 +526,28 @@ export function layout(n: LayoutNode, rect: Rect): void {
   const scroll_y = s.scrollY;
 
   if (s.direction === "column") {
-    const widths = items.map((item) => {
+    const widths: number[] = new Array(items.length);
+    const basis: number[] = new Array(items.length);
+    let margins = 0;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const st = item.style;
+      margins += margin_y(item);
       const avail = Math.max(0, inner.width - margin_x(item));
-      const fixed = resolve(item.style.width, inner.width);
-      if (fixed !== undefined)
-        return clamp(
-          fixed,
-          item.style.minWidth,
-          item.style.maxWidth,
-          inner.width,
-        );
-      const align = item.style.alignSelf ?? s.align;
-      if (align === "stretch")
-        return clamp(
-          avail,
-          item.style.minWidth,
-          item.style.maxWidth,
-          inner.width,
-        );
-      return Math.min(measure(item, avail).width, avail);
-    });
-    const basis = items.map((item, i) => {
-      const fixed = resolve(item.style.height, inner.height);
-      return (
-        fixed ?? viewport_basis(item, true) ?? measure(item, widths[i]).height
-      );
-    });
-    const available =
-      inner.height -
-      gaps -
-      items.reduce((sum, item) => sum + margin_y(item), 0);
+      const fixed = resolve(st.width, inner.width);
+      const align = st.alignSelf ?? s.align;
+      widths[i] =
+        fixed !== undefined
+          ? clamp(fixed, st.minWidth, st.maxWidth, inner.width)
+          : align === "stretch"
+            ? clamp(avail, st.minWidth, st.maxWidth, inner.width)
+            : Math.min(measure(item, avail).width, avail);
+      basis[i] =
+        resolve(st.height, inner.height) ??
+        viewport_basis(item, true) ??
+        measure(item, widths[i]).height;
+    }
+    const available = inner.height - gaps - margins;
     const heights = distribute(
       items,
       basis,
@@ -513,10 +557,8 @@ export function layout(n: LayoutNode, rect: Rect): void {
       (item) => resolve(item.style.maxHeight, inner.height) ?? Infinity,
     );
 
-    const used =
-      heights.reduce((a, b) => a + b, 0) +
-      gaps +
-      items.reduce((sum, item) => sum + margin_y(item), 0);
+    let used = gaps + margins;
+    for (const h of heights) used += h;
     const { start, between } = justify_offsets(
       s.justify,
       inner.height - used,
@@ -525,25 +567,26 @@ export function layout(n: LayoutNode, rect: Rect): void {
     let y = inner.y + start - scroll_y;
     let content_width = 0;
 
-    items.forEach((item, i) => {
-      const [mt, , mb, ml] = item.style.margin;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const margin = item.style.margin;
+      const mt = margin[0];
       const align = item.style.alignSelf ?? s.align;
       const free = inner.width - margin_x(item) - widths[i];
-      const x = inner.x + ml + align_offset(align, free) - scroll_x;
+      const x = inner.x + margin[3] + align_offset(align, free) - scroll_x;
       const top = Math.round(y + mt);
       layout(item, { x, y: top, width: widths[i], height: heights[i] });
       content_width = Math.max(content_width, widths[i] + margin_x(item));
-      y += mt + heights[i] + mb + s.gap + (i < items.length - 1 ? between : 0);
-    });
+      y +=
+        mt + heights[i] + margin[2] + s.gap + (i < items.length - 1 ? between : 0);
+    }
 
     n.contentWidth = content_width;
     n.contentHeight = used;
   } else {
     const widths = row_widths(n, items, inner.width);
-    const used =
-      widths.reduce((a, b) => a + b, 0) +
-      gaps +
-      items.reduce((sum, item) => sum + margin_x(item), 0);
+    let used = gaps;
+    for (let i = 0; i < items.length; i++) used += widths[i] + margin_x(items[i]);
     const { start, between } = justify_offsets(
       s.justify,
       inner.width - used,
@@ -552,7 +595,8 @@ export function layout(n: LayoutNode, rect: Rect): void {
     let x = inner.x + start - scroll_x;
     let content_height = 0;
 
-    items.forEach((item, i) => {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       const [mt, mr, , ml] = item.style.margin;
       const align = item.style.alignSelf ?? s.align;
       const avail = Math.max(0, inner.height - margin_y(item));
@@ -574,7 +618,7 @@ export function layout(n: LayoutNode, rect: Rect): void {
       layout(item, { x: left, y, width: widths[i], height });
       content_height = Math.max(content_height, height + margin_y(item));
       x += ml + widths[i] + mr + s.gap + (i < items.length - 1 ? between : 0);
-    });
+    }
 
     n.contentWidth = used;
     n.contentHeight = content_height;

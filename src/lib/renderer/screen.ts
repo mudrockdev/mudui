@@ -235,13 +235,22 @@ export class Screen {
   ansiLine(y: number, depth: ColorDepth = "truecolor"): string {
     let out = "";
     let current = "";
+    // the style of the previous cell: only build an SGR sequence when it changes
+    let fg = NaN;
+    let bg = NaN;
+    let attrs = NaN;
     for (let x = 0; x < this.width; x++) {
       const i = y * this.width + x;
       if (this.widths[i] === 0) continue;
-      const style = sgr(this.fg[i], this.bg[i], this.attrs[i], depth);
-      if (style !== current) {
-        out += style;
-        current = style;
+      if (this.fg[i] !== fg || this.bg[i] !== bg || this.attrs[i] !== attrs) {
+        fg = this.fg[i];
+        bg = this.bg[i];
+        attrs = this.attrs[i];
+        const style = sgr(fg, bg, attrs, depth);
+        if (style !== current) {
+          out += style;
+          current = style;
+        }
       }
       out += this.chars[i];
     }
@@ -265,6 +274,10 @@ export class Screen {
     let current = "";
     let cursor_x = -1;
     let cursor_y = -1;
+    // the style last written: only build an SGR sequence when it changes
+    let fg = NaN;
+    let bg = NaN;
+    let attrs = NaN;
 
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
@@ -288,10 +301,15 @@ export class Screen {
           out += `\x1b[${origin_row + y + 1};${x + 1}H`;
         }
 
-        const style = sgr(this.fg[i], this.bg[i], this.attrs[i], depth);
-        if (style !== current) {
-          out += style;
-          current = style;
+        if (this.fg[i] !== fg || this.bg[i] !== bg || this.attrs[i] !== attrs) {
+          fg = this.fg[i];
+          bg = this.bg[i];
+          attrs = this.attrs[i];
+          const style = sgr(fg, bg, attrs, depth);
+          if (style !== current) {
+            out += style;
+            current = style;
+          }
         }
 
         out += this.chars[i];

@@ -29,12 +29,24 @@ const NAMED: Record<string, number> = {
   grey: 8,
 };
 
+/** Parsed color strings (apps tend to use the same few colors over and over) */
+const color_cache = new Map<string, Color | undefined>();
+
 export function parseColor(value: unknown): Color | undefined {
   if (value == null || value === false || value === "") return undefined;
   if (typeof value === "number")
     return value >= 0 && value <= 255 ? value | 0 : undefined;
 
-  const v = String(value)
+  const key = String(value);
+  if (color_cache.has(key)) return color_cache.get(key);
+  const color = parse_color_string(key);
+  if (color_cache.size >= 4096) color_cache.clear();
+  color_cache.set(key, color);
+  return color;
+}
+
+function parse_color_string(value: string): Color | undefined {
+  const v = value
     .trim()
     .toLowerCase()
     .replace(/[-_\s]/g, "");
@@ -91,20 +103,40 @@ export const TEXT_STYLE_KEYS = [
   "strike",
 ] as const;
 
-/** Merges `own` over `inherited`, returning `inherited` itself if nothing changes */
+/** Merged styles, so that merging the same two styles again returns the same object */
+const merged = new WeakMap<TextStyle, WeakMap<TextStyle, TextStyle>>();
+
+/**
+ * Merges `own` over `inherited`, returning `inherited` itself if nothing
+ * changes. The result is shared (merging the same two objects gives the same
+ * result): don't modify it.
+ */
 export function mergeTextStyle(
   inherited: TextStyle,
   own: TextStyle,
 ): TextStyle {
-  let out: TextStyle | null = null;
-  for (const key of TEXT_STYLE_KEYS) {
-    const value = own[key];
-    if (value !== undefined && value !== inherited[key]) {
-      out ??= { ...inherited };
-      (out as any)[key] = value;
+  let changes = false;
+  for (const key in own) {
+    const value = own[key as keyof TextStyle];
+    if (value !== undefined && value !== inherited[key as keyof TextStyle]) {
+      changes = true;
+      break;
     }
   }
-  return out ?? inherited;
+  if (!changes) return inherited;
+
+  let by_own = merged.get(inherited);
+  if (!by_own) merged.set(inherited, (by_own = new WeakMap()));
+  let out = by_own.get(own);
+  if (!out) {
+    out = { ...inherited };
+    for (const key of TEXT_STYLE_KEYS) {
+      const value = own[key];
+      if (value !== undefined) (out as any)[key] = value;
+    }
+    by_own.set(own, out);
+  }
+  return out;
 }
 
 export type Dimension = { value: number; percent: boolean } | undefined;
@@ -167,6 +199,8 @@ export interface ComputedStyle {
   gap: number;
   padding: Edges;
   margin: Edges;
+  /** Padding plus border on each side: what's between the box and its content */
+  insets: { top: number; right: number; bottom: number; left: number };
   border: BorderChars | null;
   borderSides: { top: boolean; right: boolean; bottom: boolean; left: boolean };
   borderStyle: TextStyle;
@@ -197,6 +231,8 @@ export interface ComputedStyle {
   bg: Color | undefined;
   /** Text style declared on this element (inherited by descendants) */
   text: TextStyle;
+  /** `text` plus `bg`: the style of an inline element's own text */
+  inlineText: TextStyle;
   wrap: WrapMode;
   textAlign: "left" | "center" | "right";
   /** Repeated after the text to fill each line (`<txt fill="─">`) */
@@ -259,15 +295,20 @@ function to_edges(value: unknown): Edges {
   return [t, r, b, l];
 }
 
-function edges(attrs: Map<string, unknown>, prefix: string): Edges {
-  const out = to_edges(attrs.get(prefix));
-  const x = attrs.get(prefix + "x");
-  const y = attrs.get(prefix + "y");
+const EDGE_KEYS = {
+  padding: ["padding", "paddingx", "paddingy", "paddingtop", "paddingright", "paddingbottom", "paddingleft"],
+  margin: ["margin", "marginx", "marginy", "margintop", "marginright", "marginbottom", "marginleft"],
+} as const;
+
+function edges(attrs: Map<string, unknown>, prefix: "padding" | "margin"): Edges {
+  const [all, kx, ky, ...sides] = EDGE_KEYS[prefix];
+  const out = to_edges(attrs.get(all));
+  const x = attrs.get(kx);
+  const y = attrs.get(ky);
   if (x != null) out[1] = out[3] = to_number(x);
   if (y != null) out[0] = out[2] = to_number(y);
-  const sides = ["top", "right", "bottom", "left"];
   for (let i = 0; i < 4; i++) {
-    const v = attrs.get(prefix + sides[i]);
+    const v = attrs.get(sides[i]);
     if (v != null) out[i] = to_number(v);
   }
   return out;
@@ -318,10 +359,6 @@ export function parseTextStyle(attrs: Map<string, unknown>): TextStyle {
   return style;
 }
 
-const cache = new WeakMap<
-  TElement,
-  { version: number; style: ComputedStyle; attrs: Map<string, unknown> }
->();
 
 /** Normalized attributes of the element, with `style` expanded */
 export function normalizedAttributes(element: TElement): Map<string, unknown> {
@@ -333,7 +370,7 @@ export function computeStyle(element: TElement): ComputedStyle {
 }
 
 function compute(element: TElement) {
-  const cached = cache.get(element);
+  const cached = element.computed;
   if (cached && cached.version === element.version) return cached;
 
   const attrs = new Map<string, unknown>();
@@ -382,21 +419,29 @@ function compute(element: TElement) {
   const shrink_value = attrs.get("shrink") ?? attrs.get("flexshrink");
 
   const position = attrs.get("position");
+  const padding = edges(attrs, "padding");
+  const sides = {
+    top: side("top"),
+    right: side("right"),
+    bottom: side("bottom"),
+    left: side("left"),
+  };
 
   const style: ComputedStyle = {
     hidden:
       to_bool(attrs.get("hidden")) === true || attrs.get("display") === "none",
     direction,
     gap: Math.max(0, to_number(attrs.get("gap"))),
-    padding: edges(attrs, "padding"),
+    padding,
     margin: edges(attrs, "margin"),
-    border,
-    borderSides: {
-      top: side("top"),
-      right: side("right"),
-      bottom: side("bottom"),
-      left: side("left"),
+    insets: {
+      top: padding[0] + (border && sides.top ? 1 : 0),
+      right: padding[1] + (border && sides.right ? 1 : 0),
+      bottom: padding[2] + (border && sides.bottom ? 1 : 0),
+      left: padding[3] + (border && sides.left ? 1 : 0),
     },
+    border,
+    borderSides: sides,
     borderStyle: border_style,
     title:
       attrs.get("title") == null || attrs.get("title") === ""
@@ -451,6 +496,7 @@ function compute(element: TElement) {
     scrollsY: attrs.get("scrolly") != null && attrs.get("scrolly") !== false,
     bg,
     text,
+    inlineText: bg === undefined ? text : { ...text, bg },
     wrap: one_of(
       attrs.get("wrap") ?? attrs.get("textwrap"),
       ["wrap", "truncate", "truncate-start", "truncate-middle", "none"],
@@ -471,7 +517,7 @@ function compute(element: TElement) {
   };
 
   const entry = { version: element.version, style, attrs };
-  cache.set(element, entry);
+  element.computed = entry;
   return entry;
 }
 

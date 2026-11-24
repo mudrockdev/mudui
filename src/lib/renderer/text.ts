@@ -12,6 +12,8 @@ export interface TextSegment {
   text: string;
   style: TextStyle;
   width: number;
+  /** `text` split into grapheme clusters, when known (saves splitting it again to paint it) */
+  chars?: string[];
 }
 
 export interface TextLine {
@@ -50,10 +52,27 @@ function is_wide(cp: number): boolean {
   );
 }
 
+/** Widths of single UTF-16 code unit graphemes (-1: not computed yet) */
+const bmp_width = new Int8Array(0x10000).fill(-1);
+
 /** Width of a single grapheme cluster in terminal cells (0, 1 or 2) */
 export function graphemeWidth(grapheme: string): number {
+  if (grapheme.length === 1) {
+    const code = grapheme.charCodeAt(0);
+    const known = bmp_width[code];
+    if (known >= 0) return known;
+    return (bmp_width[code] = measure_grapheme(grapheme));
+  }
   let width = width_cache.get(grapheme);
   if (width !== undefined) return width;
+  width = measure_grapheme(grapheme);
+  if (width_cache.size > 10_000) width_cache.clear();
+  width_cache.set(grapheme, width);
+  return width;
+}
+
+function measure_grapheme(grapheme: string): number {
+  let width: number;
 
   const cp = grapheme.codePointAt(0)!;
 
@@ -62,23 +81,37 @@ export function graphemeWidth(grapheme: string): number {
   else if (EMOJI.test(grapheme) && (grapheme.includes("️") || cp >= 0x1f000))
     width = 2;
   else width = 1;
-
-  if (width_cache.size > 10_000) width_cache.clear();
-  width_cache.set(grapheme, width);
   return width;
 }
 
+const ASCII = /^[\x20-\x7e]*$/;
+/** Segmented non-ASCII strings: the same text tends to be drawn again and again */
+const segment_cache = new Map<string, string[]>();
+
+/** Like `graphemes`, but the result may be shared: don't modify it */
+function split(text: string): string[] {
+  if (ASCII.test(text)) return text.split("");
+  let out = segment_cache.get(text);
+  if (out) return out;
+  out = Array.from(segmenter.segment(text), (s) => s.segment);
+  if (text.length <= 256) {
+    if (segment_cache.size >= 2048) segment_cache.clear();
+    segment_cache.set(text, out);
+  }
+  return out;
+}
+
 export function graphemes(text: string): string[] {
-  // fast path for plain ASCII
-  if (/^[\x20-\x7e]*$/.test(text)) return text.split("");
-  return Array.from(segmenter.segment(text), (s) => s.segment);
+  const out = split(text);
+  // a cached array is shared: hand out a copy
+  return segment_cache.get(text) === out ? out.slice() : out;
 }
 
 /** Width of a string in terminal cells */
 export function stringWidth(text: string): number {
-  if (/^[\x20-\x7e]*$/.test(text)) return text.length;
+  if (ASCII.test(text)) return text.length;
   let width = 0;
-  for (const g of graphemes(text)) width += graphemeWidth(g);
+  for (const g of split(text)) width += graphemeWidth(g);
   return width;
 }
 
@@ -89,7 +122,7 @@ export function truncate(text: string, width: number, ellipsis = "…"): string 
   let out = "";
   let w = 0;
   const limit = width - stringWidth(ellipsis);
-  for (const g of graphemes(text)) {
+  for (const g of split(text)) {
     const gw = graphemeWidth(g);
     if (w + gw > limit) break;
     out += g;
@@ -124,7 +157,7 @@ interface Glyph {
 function to_logical_lines(runs: TextRun[]): Glyph[][] {
   const lines: Glyph[][] = [[]];
   for (const run of runs) {
-    for (const g of graphemes(
+    for (const g of split(
       run.text.replace(/\r\n?/g, "\n").replace(/\t/g, "  "),
     )) {
       if (g === "\n") {
@@ -150,13 +183,20 @@ function glyphs_width(glyphs: Glyph[]): number {
 function to_line(glyphs: Glyph[]): TextLine {
   const segments: TextSegment[] = [];
   let width = 0;
+  let last: (TextSegment & { chars: string[] }) | undefined;
   for (const glyph of glyphs) {
-    const last = segments[segments.length - 1];
     if (last && last.style === glyph.style) {
       last.text += glyph.g;
       last.width += glyph.w;
+      last.chars.push(glyph.g);
     } else {
-      segments.push({ text: glyph.g, style: glyph.style, width: glyph.w });
+      last = {
+        text: glyph.g,
+        style: glyph.style,
+        width: glyph.w,
+        chars: [glyph.g],
+      };
+      segments.push(last);
     }
     width += glyph.w;
   }
@@ -269,15 +309,8 @@ function truncate_line(
   return [...head, ellipsis(head[head.length - 1]?.style ?? glyphs[0].style)];
 }
 
-/** Lays out runs of text into lines no wider than `width` (except in `none` mode) */
-export function layoutText(
-  runs: TextRun[],
-  width: number,
-  mode: WrapMode = "wrap",
-): TextLine[] {
-  const logical = to_logical_lines(runs);
+function lay_out(logical: Glyph[][], width: number, mode: WrapMode) {
   const lines: TextLine[] = [];
-
   for (const glyphs of logical) {
     if (mode === "wrap") {
       for (const line of wrap_line(glyphs, Math.max(1, width)))
@@ -288,8 +321,16 @@ export function layoutText(
       lines.push(to_line(truncate_line(glyphs, width, mode)));
     }
   }
-
   return lines;
+}
+
+/** Lays out runs of text into lines no wider than `width` (except in `none` mode) */
+export function layoutText(
+  runs: TextRun[],
+  width: number,
+  mode: WrapMode = "wrap",
+): TextLine[] {
+  return lay_out(to_logical_lines(runs), width, mode);
 }
 
 /** The width the text would take up without any wrapping */
@@ -298,4 +339,72 @@ export function maxContentWidth(runs: TextRun[]): number {
   for (const glyphs of to_logical_lines(runs))
     max = Math.max(max, glyphs_width(glyphs));
   return max;
+}
+
+function same_style(a: TextStyle, b: TextStyle): boolean {
+  if (a === b) return true;
+  return (
+    a.fg === b.fg &&
+    a.bg === b.bg &&
+    a.bold === b.bold &&
+    a.dim === b.dim &&
+    a.italic === b.italic &&
+    a.underline === b.underline &&
+    a.inverse === b.inverse &&
+    a.strike === b.strike
+  );
+}
+
+/**
+ * Runs of text split into glyphs once, with the laid out lines memoized per
+ * width. The layout pass keeps one per text block across frames and reuses it
+ * while the text and its styles stay the same, so unchanged text isn't split
+ * and wrapped again every frame.
+ *
+ * The returned lines are shared: don't modify them.
+ */
+export class PreparedText {
+  readonly runs: TextRun[];
+  /** The width the text would take up without any wrapping */
+  readonly natural: number;
+  readonly #logical: Glyph[][];
+  #layouts = new Map<number, TextLine[]>();
+  #mode: WrapMode | null = null;
+
+  constructor(runs: TextRun[]) {
+    this.runs = runs;
+    this.#logical = to_logical_lines(runs);
+    let natural = 0;
+    for (const glyphs of this.#logical)
+      natural = Math.max(natural, glyphs_width(glyphs));
+    this.natural = natural;
+  }
+
+  /** Whether `runs` has the same text and styles as this */
+  matches(runs: TextRun[]): boolean {
+    const own = this.runs;
+    if (own.length !== runs.length) return false;
+    for (let i = 0; i < runs.length; i++) {
+      if (own[i].text !== runs[i].text) return false;
+      if (!same_style(own[i].style, runs[i].style)) return false;
+    }
+    return true;
+  }
+
+  /** Same as `layoutText(runs, width, mode)` */
+  layout(width: number, mode: WrapMode = "wrap"): TextLine[] {
+    if (mode !== this.#mode) {
+      this.#mode = mode;
+      this.#layouts.clear();
+    }
+    // every line fits in `natural`, so any width beyond it gives the same lines
+    const key = mode === "none" ? 0 : Math.min(width, this.natural);
+    let lines = this.#layouts.get(key);
+    if (!lines) {
+      if (this.#layouts.size >= 8) this.#layouts.clear();
+      lines = lay_out(this.#logical, key, mode);
+      this.#layouts.set(key, lines);
+    }
+    return lines;
+  }
 }
