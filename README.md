@@ -122,6 +122,8 @@ Template text follows HTML whitespace rules: a line break plus indentation in yo
 
 Some defaults are tuned for terminals. Children in a column don't shrink (they overflow and are clipped). In a row they shrink, which wraps their text, unless they have a fixed `width`.
 
+A box with `scrollY` (or `scrollX`) that also has `grow` is a viewport: along its parent's main axis it takes its size from the free space, not from its content. That is how scrolling components fill a sized parent (`<ScrollView grow={1}>`, `<LogView grow={1}>`) without pushing what comes after them off screen.
+
 ## Events and focus
 
 Event attributes work like in the DOM, with DOM-like event objects that bubble up the tree:
@@ -149,14 +151,14 @@ Every event has `stopPropagation()` and `preventDefault()`.
 
 **Layout and display**
 
-| Component                                             | Purpose                                                                                                          |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `Box`, `Text`                                         | Component wrappers around `<box>` / `<txt>`                                                                      |
-| `Panel`                                               | Bordered box with a title; the border lights up while something inside has focus                                 |
-| `Collapsible`                                         | A header that shows or hides its content (Enter, arrows, click)                                                  |
-| `ScrollView`                                          | Scrollable area with a scrollbar; keys, wheel, and `follow` to stick to the bottom                               |
-| `LogView`                                             | Log output: renders only the visible lines, so it stays fast with thousands; follows the end until you scroll up |
-| `Badge`, `Divider`, `Spacer`, `KeyHints`, `Scrollbar` | Small pieces                                                                                                     |
+| Component                                             | Purpose                                                                                                                               |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `Box`, `Text`                                         | Component wrappers around `<box>` / `<txt>`                                                                                           |
+| `Panel`                                               | Bordered box with a title; the border lights up while something inside has focus                                                      |
+| `Collapsible`                                         | A header that shows or hides its content (Enter, arrows, click)                                                                       |
+| `ScrollView`                                          | Scrollable area with a scrollbar: `height`, `grow` or `maxHeight`; keys, wheel, `follow`; scrolls focused children into view          |
+| `LogView`                                             | Log output (`height` or `grow`): renders only the visible lines, so it stays fast with thousands; follows the end until you scroll up |
+| `Badge`, `Divider`, `Spacer`, `KeyHints`, `Scrollbar` | Small pieces                                                                                                                          |
 
 **Inputs**
 
@@ -171,14 +173,14 @@ Every event has `stopPropagation()` and `preventDefault()`.
 
 **Lists and pickers**
 
-| Component     | Purpose                                                                                                                      |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `Select`      | A scrolling list: `items`, `bind:value`, `height`, `onchange`, `onselect`; disabled items and hints                          |
-| `MultiSelect` | Checklist: `bind:value` (array); space toggles, `a` toggles all                                                              |
-| `Combobox`    | Search-as-you-type with fuzzy matching and highlighted matches                                                               |
-| `Tabs`        | `items`, `bind:value`; arrows, numbers and clicks                                                                            |
-| `Table`       | `columns` (`width`, `grow`, `align`, `format`, `color`), `rows`, `bind:selected`, `onselect`                                 |
-| `Tree`        | Expandable tree with connecting lines: `nodes`, `bind:selected`, `bind:expanded`; arrows open/close and move to parent/child |
+| Component     | Purpose                                                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Select`      | A scrolling list: `items`, `bind:value`, `height` or `grow`, `onchange`, `onselect`; disabled items and hints                                    |
+| `MultiSelect` | Checklist: `bind:value` (array); space toggles, `a` toggles all                                                                                  |
+| `Combobox`    | Search-as-you-type with fuzzy matching and highlighted matches                                                                                   |
+| `Tabs`        | `items`, `bind:value`; arrows, numbers and clicks; scrolls (with `‹ ›`) to keep the active tab whole when they don't fit                         |
+| `Table`       | `columns` (`width`, `grow`, `align`, `format`, `color`), `rows`, `bind:selected`, `onselect`                                                     |
+| `Tree`        | Expandable tree with connecting lines: `nodes`, `bind:selected`, `bind:expanded`, `height` or `grow`; arrows open/close and move to parent/child |
 
 List items can be `{ label, value, hint?, disabled?, color? }` objects or plain strings.
 

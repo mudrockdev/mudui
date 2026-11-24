@@ -35,29 +35,29 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
       "mudui-source": "./src/lib/index.ts",
+      "types": "./dist/index.d.ts",
       "svelte": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./renderer": {
-      "types": "./dist/renderer/index.d.ts",
       "mudui-source": "./src/lib/renderer/index.ts",
+      "types": "./dist/renderer/index.d.ts",
       "default": "./dist/renderer/index.js"
     },
     "./testing": {
-      "types": "./dist/testing/index.d.ts",
       "mudui-source": "./src/lib/testing/index.ts",
+      "types": "./dist/testing/index.d.ts",
       "default": "./dist/testing/index.js"
     },
     "./plugin": {
-      "types": "./dist/bun/plugin.d.ts",
       "mudui-source": "./src/lib/bun/plugin.ts",
+      "types": "./dist/bun/plugin.d.ts",
       "default": "./dist/bun/plugin.js"
     },
     "./preload": {
-      "types": "./dist/bun/preload.d.ts",
       "mudui-source": "./src/lib/bun/preload.ts",
+      "types": "./dist/bun/preload.d.ts",
       "default": "./dist/bun/preload.js"
     }
   },

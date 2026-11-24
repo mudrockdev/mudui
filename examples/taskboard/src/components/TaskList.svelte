@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     Panel,
+    Scrollbar,
     TextInput,
     getTheme,
     useApp,
@@ -15,13 +16,19 @@
   let {
     store,
     list,
+    reveal = $bindable(null),
     ondelete,
+    ondetails,
     onstatus,
   }: {
     store: TaskStore;
     list: string;
+    /** Id of a task to move the cursor to (cleared once done) */
+    reveal?: string | null;
     /** Asks for confirmation before deleting */
     ondelete: (task: Task) => void;
+    /** Opens the details editor */
+    ondetails: (task: Task) => void;
     onstatus: (message: string) => void;
   } = $props();
 
@@ -55,7 +62,8 @@
     shown_list = list;
   });
 
-  const all = $derived(store.tasksIn(list));
+  /** The tasks of the list, sorted and filtered per the settings */
+  const all = $derived(store.visibleIn(list));
   const tasks = $derived(
     filter
       ? all.filter((task) =>
@@ -66,7 +74,10 @@
   const current = $derived(
     tasks[Math.min(selected, tasks.length - 1)] as Task | undefined,
   );
-  const open = $derived(all.filter((task) => !task.done).length);
+  const open = $derived(store.openCount(list));
+  const hidden_done = $derived(
+    store.settings.showDone ? 0 : store.tasksIn(list).length - all.length,
+  );
 
   // keep the cursor in range and in view
   const index = $derived(Math.max(0, Math.min(selected, tasks.length - 1)));
@@ -93,6 +104,56 @@
     if (list_element) app.focus(list_element);
   }
 
+  // jump to a task chosen elsewhere (the outline)
+  $effect.pre(() => {
+    if (!reveal) return;
+    const task = tasks.find((t) => t.id === reveal);
+    if (!task && filter) filter = "";
+    select_task(tasks.find((t) => t.id === reveal));
+    reveal = null;
+    queueMicrotask(back_to_list);
+  });
+
+  // commands the app can run (from the command palette)
+  export function startAdding() {
+    draft = "";
+    adding = true;
+  }
+
+  export function startFiltering() {
+    filtering = true;
+  }
+
+  export function openDetails() {
+    if (current) ondetails(current);
+  }
+
+  export function toggleCurrent() {
+    // read the task first: once toggled it may be hidden or sorted elsewhere
+    const task = current;
+    if (!task) return;
+    store.toggle(task.id);
+    onstatus(task.done ? `Done: ${task.title}` : `Reopened: ${task.title}`);
+  }
+
+  export function clearDone() {
+    const removed = store.clearDone(list);
+    onstatus(
+      removed
+        ? `Cleared ${removed} finished task${removed === 1 ? "" : "s"}`
+        : "Nothing to clear",
+    );
+  }
+
+  function reorder(task: Task, delta: -1 | 1) {
+    if (store.settings.sort !== "manual") {
+      onstatus("Reordering needs manual order (Settings → Task order)");
+      return;
+    }
+    store.move(task.id, delta);
+    select_task(task);
+  }
+
   function onkeydown(event: KeyEvent) {
     const task = current;
     const k = event.key;
@@ -103,35 +164,26 @@
     else if (k === "End" || event.is("G")) move(tasks.length);
     else if (k === "PageUp") move(-rows);
     else if (k === "PageDown") move(rows);
-    else if (event.is("n") || event.is("a")) {
-      draft = "";
-      adding = true;
-    } else if (event.is("/")) filtering = true;
-    else if (event.is("c")) {
-      const removed = store.clearDone(list);
-      onstatus(
-        removed
-          ? `Cleared ${removed} finished task${removed === 1 ? "" : "s"}`
-          : "Nothing to clear",
-      );
-    } else if (!task) return;
-    else if (k === " " || event.is("x")) {
-      store.toggle(task.id);
-      onstatus(task.done ? `Done: ${task.title}` : `Reopened: ${task.title}`);
-    } else if (k === "Enter" || event.is("e")) {
+    else if (event.is("n") || event.is("a")) startAdding();
+    else if (event.is("/")) startFiltering();
+    else if (event.is("c")) clearDone();
+    else if (!task) return;
+    else if (k === " " || event.is("x")) toggleCurrent();
+    else if (event.is("o")) ondetails(task);
+    else if (k === "Enter" || event.is("e")) {
       edit_draft = task.title;
       editing = task.id;
     } else if (event.is("d") || k === "Delete") ondelete(task);
     else if (event.is("p")) {
       store.cyclePriority(task.id);
+      // the task may move when sorted by priority; keep the cursor on it
+      select_task(task);
       onstatus(`Priority: ${task.priority}`);
-    } else if (event.is("K") || (k === "ArrowUp" && event.shift)) {
-      store.move(task.id, -1);
-      select_task(task);
-    } else if (event.is("J") || (k === "ArrowDown" && event.shift)) {
-      store.move(task.id, 1);
-      select_task(task);
-    } else return;
+    } else if (event.is("K") || (k === "ArrowUp" && event.shift))
+      reorder(task, -1);
+    else if (event.is("J") || (k === "ArrowDown" && event.shift))
+      reorder(task, 1);
+    else return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -186,50 +238,62 @@
       }}
     />
   {/if}
-  <box
-    grow={1}
-    focusable
-    autofocus
-    {onkeydown}
-    onfocus={() => (focused = true)}
-    onblur={() => (focused = false)}
-    onwheel={(e: WheelEvent) => move(e.deltaY)}
-    onlayout={(e: LayoutEvent) => (rows = Math.max(1, e.height))}
-    {@attach (element: TElement) => {
-      list_element = element;
-    }}
-  >
-    {#each tasks.slice(top, top + rows) as task, i (task.id)}
-      {#if editing === task.id}
-        <TextInput
-          bind:value={edit_draft}
-          prefix="✎ "
-          autofocus
-          onsubmit={() => save_edit(task.id)}
-          oncancel={() => {
-            editing = null;
-            back_to_list();
-          }}
-        />
+  <box row grow={1}>
+    <box
+      grow={1}
+      focusable
+      autofocus
+      {onkeydown}
+      onfocus={() => (focused = true)}
+      onblur={() => (focused = false)}
+      onwheel={(e: WheelEvent) => move(e.deltaY)}
+      onlayout={(e: LayoutEvent) => (rows = Math.max(1, e.height))}
+      {@attach (element: TElement) => {
+        list_element = element;
+      }}
+    >
+      {#each tasks.slice(top, top + rows) as task, i (task.id)}
+        {#if editing === task.id}
+          <TextInput
+            bind:value={edit_draft}
+            prefix="✎ "
+            autofocus
+            onsubmit={() => save_edit(task.id)}
+            oncancel={() => {
+              editing = null;
+              back_to_list();
+            }}
+          />
+        {:else}
+          <TaskRow
+            {task}
+            selected={i + top === index}
+            active={focused}
+            onselect={() => (selected = i + top)}
+            ontoggle={() => {
+              selected = i + top;
+              store.toggle(task.id);
+            }}
+          />
+        {/if}
       {:else}
-        <TaskRow
-          {task}
-          selected={i + top === index}
-          active={focused}
-          onselect={() => (selected = i + top)}
-          ontoggle={() => {
-            selected = i + top;
-            store.toggle(task.id);
-          }}
-        />
-      {/if}
-    {:else}
-      <txt color={theme.muted} italic>
-        {filter
-          ? `Nothing matches “${filter}”.`
-          : "No tasks here. Press n to add one."}
-      </txt>
-    {/each}
+        <txt color={theme.muted} italic>
+          {filter
+            ? `Nothing matches “${filter}”.`
+            : hidden_done
+              ? `All ${hidden_done} tasks here are finished (hidden in Settings).`
+              : "No tasks here. Press n to add one."}
+        </txt>
+      {/each}
+    </box>
+    {#if tasks.length > rows}
+      <Scrollbar
+        total={tasks.length}
+        visible={rows}
+        offset={top}
+        height={rows}
+      />
+    {/if}
   </box>
   {#if tasks.length > rows}
     <txt color={theme.muted} textAlign="right">{index + 1}/{tasks.length}</txt>

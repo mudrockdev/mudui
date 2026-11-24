@@ -1,5 +1,9 @@
 <script lang="ts" generics="T">
-  import type { KeyEvent, WheelEvent } from "../runtime/events.js";
+  import type {
+    KeyEvent,
+    LayoutEvent,
+    WheelEvent,
+  } from "../runtime/events.js";
   import { getTheme } from "../theme.js";
   import type { TreeNode } from "../types.js";
   import Scrollbar from "./Scrollbar.svelte";
@@ -9,6 +13,7 @@
     selected = $bindable(),
     expanded = $bindable([]),
     height = 10,
+    grow,
     guides = true,
     autofocus = false,
     onselect,
@@ -19,8 +24,10 @@
     selected?: string;
     /** Ids of the expanded nodes */
     expanded?: string[];
-    /** Number of visible rows */
+    /** Number of visible rows (ignored with `grow`) */
     height?: number;
+    /** Fill the free space of a sized parent instead of using `height` */
+    grow?: number | boolean;
     /** Draw connecting lines */
     guides?: boolean;
     autofocus?: boolean;
@@ -32,6 +39,9 @@
   const theme = getTheme();
   let focused = $state(false);
   let offset = $state(0);
+  /** Measured height of the rows area, used with `grow` */
+  let viewport = $state(0);
+  const visible = $derived(grow ? Math.max(1, viewport) : height);
 
   interface Row {
     node: TreeNode<T>;
@@ -86,9 +96,9 @@
     ),
   );
   const top = $derived.by(() => {
-    let start = Math.min(offset, Math.max(0, rows.length - height));
+    let start = Math.min(offset, Math.max(0, rows.length - visible));
     if (index < start) start = index;
-    if (index >= start + height) start = index - height + 1;
+    if (index >= start + visible) start = index - visible + 1;
     return Math.max(0, start);
   });
 
@@ -121,8 +131,8 @@
     if (!row) return;
     if (k === "ArrowUp" || event.is("k")) select(index - 1);
     else if (k === "ArrowDown" || event.is("j")) select(index + 1);
-    else if (k === "PageUp") select(index - height);
-    else if (k === "PageDown") select(index + height);
+    else if (k === "PageUp") select(index - visible);
+    else if (k === "PageDown") select(index + visible);
     else if (k === "Home") select(0);
     else if (k === "End") select(rows.length - 1);
     else if (k === "ArrowRight" || event.is("l")) {
@@ -148,8 +158,12 @@
   }
 </script>
 
+<!-- scrollY marks the boxes as viewports: with `grow`, they take their height
+     from the free space rather than from the rows shown -->
 <box
   row
+  {grow}
+  scrollY={0}
   focusable
   {autofocus}
   onfocus={() => (focused = true)}
@@ -157,8 +171,12 @@
   {onkeydown}
   onwheel={(e: WheelEvent) => select(index + e.deltaY)}
 >
-  <box grow={1}>
-    {#each rows.slice(top, top + height) as row, i (row.node.id)}
+  <box
+    grow={1}
+    scrollY={0}
+    onlayout={(e: LayoutEvent) => (viewport = e.height)}
+  >
+    {#each rows.slice(top, top + visible) as row, i (row.node.id)}
       {@const active = i + top === index}
       <box row onclick={() => click(i + top)}>
         <txt wrap="none" color={theme.border}>{row.prefix}</txt>
@@ -180,7 +198,12 @@
       </box>
     {/each}
   </box>
-  {#if rows.length > height}
-    <Scrollbar total={rows.length} visible={height} offset={top} {height} />
+  {#if rows.length > visible}
+    <Scrollbar
+      total={rows.length}
+      {visible}
+      offset={top}
+      height={visible}
+    />
   {/if}
 </box>

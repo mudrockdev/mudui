@@ -1,5 +1,14 @@
 <script lang="ts">
-  import { Panel, ProgressBar, Table, getTheme, type TableColumn } from "mudui";
+  import {
+    BarChart,
+    Divider,
+    Panel,
+    ProgressBar,
+    Sparkline,
+    Table,
+    getTheme,
+    type TableColumn,
+  } from "mudui";
   import type { Priority, TaskStore } from "../lib/tasks.svelte.ts";
 
   let { store }: { store: TaskStore } = $props();
@@ -31,6 +40,18 @@
     { key: "done", title: "Done", align: "right" },
   ];
   const width = $derived(Math.max(8, ...store.lists.map((l) => l.length)) + 1);
+
+  const open_by_list = $derived(
+    store.lists.map((list) => ({ label: list, value: store.openCount(list) })),
+  );
+  const DAYS = 14;
+  const finished = $derived(store.completionsByDay(DAYS));
+  const finished_total = $derived(finished.reduce((a, b) => a + b, 0));
+  const hours_left = $derived(
+    store.tasks
+      .filter((t) => !t.done)
+      .reduce((sum, t) => sum + (t.estimate ?? 0), 0),
+  );
 </script>
 
 <box row grow={1} gap={1}>
@@ -47,7 +68,21 @@
       </box>
     {/each}
   </Panel>
-  <Panel title="By priority" width={32}>
-    <Table {columns} {rows} focusable={false} />
-  </Panel>
+  <box width={36} gap={1}>
+    <Panel title="By priority">
+      <Table {columns} {rows} focusable={false} />
+    </Panel>
+    <Panel title="Open by list">
+      <BarChart data={open_by_list} color={theme.accent} />
+    </Panel>
+    <Panel title="Momentum">
+      <Divider title={`finished, last ${DAYS} days`} />
+      <box row gap={1}>
+        <Sparkline data={finished} width={DAYS} color={theme.success} min={0} />
+        <txt color={theme.muted}>{finished_total} total</txt>
+      </box>
+      <Divider title="estimated work left" />
+      <txt>{hours_left ? `${hours_left}h` : "no estimates"}</txt>
+    </Panel>
+  </box>
 </box>

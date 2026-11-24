@@ -190,6 +190,9 @@ export interface ComputedStyle {
   left: Dimension;
   scrollX: number;
   scrollY: number;
+  /** `scrollX` / `scrollY` is set: the box is a viewport onto its content on that axis */
+  scrollsX: boolean;
+  scrollsY: boolean;
   /** Background fill of the element's box */
   bg: Color | undefined;
   /** Text style declared on this element (inherited by descendants) */
@@ -444,6 +447,8 @@ function compute(element: TElement) {
     left: to_dimension(attrs.get("left")),
     scrollX: Math.max(0, Math.floor(to_number(attrs.get("scrollx")))),
     scrollY: Math.max(0, Math.floor(to_number(attrs.get("scrolly")))),
+    scrollsX: attrs.get("scrollx") != null && attrs.get("scrollx") !== false,
+    scrollsY: attrs.get("scrolly") != null && attrs.get("scrolly") !== false,
     bg,
     text,
     wrap: one_of(

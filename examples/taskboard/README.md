@@ -19,20 +19,29 @@ bun start ./my-tasks.json
 bun test
 ```
 
-Press `?` in the app for all the keys. You can add, edit, toggle, reorder, prioritise, filter and delete tasks, and create or delete lists. The mouse works too. Changes are saved automatically, atomically, and again on exit.
+Press `?` in the app for all the keys, or ctrl+p for the command palette. You can add, edit, toggle, reorder, prioritise, filter and delete tasks; give them notes, tags, an estimate and a list in the details editor (`o`); browse everything in the outline; and create or delete lists. The mouse works too. Changes are saved automatically, atomically, and again on exit, together with the settings.
+
+mudtasks is also the test ground for mudui: it uses every component and hook in the kit, and is meant to be tried by hand in a real terminal (resize it, make it tiny, flood it with tasks) as well as through its tests.
 
 ## What it shows
 
-| File                             | mudui features                                                                                           |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `src/main.ts`                    | `render()`, `waitUntilExit()`                                                                            |
-| `src/App.svelte`                 | `useInput` global shortcuts, `Modal` dialogs (focus trap + restore), `TextInput` in a modal              |
-| `src/components/TaskList.svelte` | Focusable custom list with `onkeydown`/`onwheel`/`onlayout`, inline editing, `{@attach}` + `app.focus()` |
-| `src/components/TaskRow.svelte`  | `MouseEvent.localX` hit areas, inherited colors                                                          |
-| `src/components/Sidebar.svelte`  | `Select` with hints                                                                                      |
-| `src/components/Stats.svelte`    | `ProgressBar`, `Table` with per-cell colors                                                              |
-| `src/lib/tasks.svelte.ts`        | Runes in a `.svelte.ts` module (compiled by the same Bun plugin)                                         |
-| `tests/app.test.ts`              | End-to-end tests with `mudui/testing`                                                                    |
+| File                               | mudui features                                                                                                                                                        |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main.ts`                      | `render()`, `waitUntilExit()`                                                                                                                                         |
+| `src/App.svelte`                   | `useInput` shortcuts, `useDialog` (confirm, prompt, alert) + `DialogHost`, `useToast` + `Toaster`, `CommandPalette`                                                   |
+| `src/components/Header.svelte`     | `Badge`, `Tabs` (scrolls when narrow), `Spacer`, `ProgressBar`, `useTerminalSize`                                                                                     |
+| `src/components/Sidebar.svelte`    | `Panel`, `Select` with hints and `grow`                                                                                                                               |
+| `src/components/TaskList.svelte`   | Focusable custom list (`onkeydown`/`onwheel`/`onlayout`), `Scrollbar`, inline `TextInput`, `{@attach}` + `app.focus()`, exported functions                            |
+| `src/components/TaskRow.svelte`    | `MouseEvent.localX` hit areas, `Badge` tags, inherited colors                                                                                                         |
+| `src/components/TaskEditor.svelte` | `Modal` form: `TextInput`, `TextArea`, `Slider`, `Checkbox`, `RadioGroup`, `MultiSelect`, `Combobox`, `Button`; `ScrollView` with `maxHeight`, one column when narrow |
+| `src/components/Outline.svelte`    | `Tree` with `grow`                                                                                                                                                    |
+| `src/components/Stats.svelte`      | `ProgressBar`, `Table` with per-cell colors, `BarChart`, `Sparkline`, `Divider`                                                                                       |
+| `src/components/Activity.svelte`   | `LogView` with `grow`                                                                                                                                                 |
+| `src/components/Settings.svelte`   | `Switch`, `RadioGroup` (row), `Slider`, `Collapsible`, `Checkbox`, `Button`, `Box`, `Text`, bindings into a store                                                     |
+| `src/components/Help.svelte`       | `ScrollView` with `grow`, `Collapsible` sections, `Table`                                                                                                             |
+| `src/components/StatusBar.svelte`  | `KeyHints`, `Spinner`                                                                                                                                                 |
+| `src/lib/tasks.svelte.ts`          | Runes in a `.svelte.ts` module (compiled by the same Bun plugin)                                                                                                      |
+| `tests/app.test.ts`                | End-to-end tests with `mudui/testing`                                                                                                                                 |
 
 ## Setup
 

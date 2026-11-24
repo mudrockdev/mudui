@@ -14,5 +14,5 @@
 </script>
 
 <Panel title="Lists" width={24}>
-  <Select {items} bind:value={list} height={Math.max(1, store.lists.length)} />
+  <Select {items} bind:value={list} grow={1} />
 </Panel>

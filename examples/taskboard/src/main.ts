@@ -11,9 +11,10 @@ import { TaskStore } from "./lib/tasks.svelte.ts";
 
 const path = process.argv[2] ?? defaultPath();
 const store = new TaskStore(await load(path));
+store.log(`Opened ${path} (${store.tasks.length} tasks)`);
 
 const app = render(App, {
-  props: { store, save: (data) => save(path, data) },
+  props: { store, path, save: (data) => save(path, data) },
 });
 
 try {

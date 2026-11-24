@@ -1,5 +1,9 @@
 <script lang="ts" generics="T">
-  import type { KeyEvent, WheelEvent } from "../runtime/events.js";
+  import type {
+    KeyEvent,
+    LayoutEvent,
+    WheelEvent,
+  } from "../runtime/events.js";
   import { getTheme } from "../theme.js";
   import type { ColorValue } from "../types.js";
   import { normalizeItems } from "../items.js";
@@ -10,6 +14,7 @@
     items,
     value = $bindable(),
     height,
+    grow,
     indicator = "❯",
     disabled = false,
     autofocus = false,
@@ -21,6 +26,8 @@
     value?: T;
     /** Number of visible rows (default: all items, up to 10) */
     height?: number;
+    /** Fill the free space of a sized parent instead of using `height` */
+    grow?: number | boolean;
     indicator?: string;
     disabled?: boolean;
     autofocus?: boolean;
@@ -36,7 +43,16 @@
   let offset = $state(0);
 
   const list = $derived(normalizeItems(items));
-  const rows = $derived(Math.max(1, height ?? Math.min(list.length, 10)));
+  /** Measured height of the list area, used with `grow` */
+  let viewport = $state(0);
+  const rows = $derived(
+    Math.max(
+      1,
+      grow
+        ? Math.min(viewport, list.length)
+        : (height ?? Math.min(list.length, 10)),
+    ),
+  );
   const index = $derived(
     Math.max(
       0,
@@ -64,20 +80,20 @@
     }
   });
 
+  /** Moves `delta` items, to the nearest enabled item past the target (or before it, at the ends) */
   function move(delta: number) {
-    if (list.length === 0) return;
-    let i = index;
-    for (let step = 0; step < list.length; step++) {
-      const next = Math.max(0, Math.min(list.length - 1, i + delta));
-      if (next === i) break;
-      i = next;
-      if (!list[i].disabled) {
-        value = list[i].value;
-        onchange?.(list[i].value);
-        return;
-      }
-      delta = Math.sign(delta);
+    if (list.length === 0 || delta === 0) return;
+    const direction = Math.sign(delta);
+    const target = Math.max(0, Math.min(list.length - 1, index + delta));
+    let i = target;
+    while (i >= 0 && i < list.length && list[i].disabled) i += direction;
+    if (i < 0 || i >= list.length) {
+      i = target;
+      while (i !== index && list[i].disabled) i -= direction;
     }
+    if (i === index || list[i].disabled) return;
+    value = list[i].value;
+    onchange?.(list[i].value);
   }
 
   function choose(i: number) {
@@ -106,12 +122,17 @@
   }
 
   function onwheel(event: WheelEvent) {
+    if (disabled) return;
     move(event.deltaY);
   }
 </script>
 
+<!-- scrollY marks the boxes as viewports: with `grow`, they take their height
+     from the free space rather than from the items shown -->
 <box
   row
+  {grow}
+  scrollY={0}
   focusable={!disabled}
   {disabled}
   {autofocus}
@@ -120,7 +141,11 @@
   {onkeydown}
   {onwheel}
 >
-  <box grow={1}>
+  <box
+    grow={1}
+    scrollY={0}
+    onlayout={(e: LayoutEvent) => (viewport = e.height)}
+  >
     {#if list.length === 0}
       <txt color={theme.muted} italic>{emptyText}</txt>
     {/if}

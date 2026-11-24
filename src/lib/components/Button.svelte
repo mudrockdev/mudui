@@ -55,6 +55,7 @@
   {disabled}
   {autofocus}
   alignSelf="start"
+  shrink={0}
   onfocus={() => (focused = true)}
   onblur={() => (focused = false)}
   onclick={press}

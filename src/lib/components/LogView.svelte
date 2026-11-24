@@ -59,15 +59,22 @@
   }
 </script>
 
+<!-- scrollY marks both boxes as viewports, so that with `grow` they take their
+     height from the free space rather than from the lines shown -->
 <box
   row
   {height}
   {grow}
+  scrollY={0}
   {focusable}
   {onkeydown}
   onwheel={(e: WheelEvent) => scroll(top + e.deltaY * 3)}
 >
-  <box grow={1} onlayout={(e: LayoutEvent) => (viewport = e.height)}>
+  <box
+    grow={1}
+    scrollY={0}
+    onlayout={(e: LayoutEvent) => (viewport = e.height)}
+  >
     {#each visible as line, i (i + top)}
       <txt {wrap} color={line.color} dim={line.dim} bold={line.bold}
         >{line.text || " "}</txt

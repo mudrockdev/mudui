@@ -1,6 +1,12 @@
 <script lang="ts">
+  import { layoutText } from "../renderer/text.js";
   import { useApp } from "../runtime/context.js";
-  import { toastStore, type ToastKind } from "../runtime/toast.svelte.js";
+  import type { LayoutEvent } from "../runtime/events.js";
+  import {
+    toastStore,
+    type Toast,
+    type ToastKind,
+  } from "../runtime/toast.svelte.js";
   import { getTheme } from "../theme.js";
 
   let {
@@ -32,10 +38,43 @@
 
   const top = $derived(position.startsWith("top"));
   const right = $derived(position.endsWith("right"));
-  const shown = $derived(store.items.slice(-max));
+  /** Rows the toasts can use (measured; the parent's height minus a margin) */
+  let room = $state(Infinity);
+
+  /** Rows a toast takes: its border, title, and message wrapped like the renderer does */
+  function rows_of(toast: Toast): number {
+    const text = toast.title
+      ? toast.message
+      : `${icons[toast.kind]} ${toast.message}`;
+    const lines = layoutText([{ text, style: {} }], Math.max(1, width - 4));
+    return 2 + (toast.title ? 1 : 0) + lines.length;
+  }
+
+  // the newest toasts that fit (always at least one)
+  const shown = $derived.by(() => {
+    const out: Toast[] = [];
+    let used = 0;
+    const recent = store.items.slice(-max);
+    for (let i = recent.length - 1; i >= 0; i--) {
+      const rows = rows_of(recent[i]);
+      if (out.length > 0 && used + rows > room) break;
+      used += rows;
+      out.unshift(recent[i]);
+    }
+    return out;
+  });
 
   $effect(() => () => store.clear());
 </script>
+
+<!-- measures the room for toasts: the whole height, minus a row at each end -->
+<box
+  position="absolute"
+  top={1}
+  bottom={1}
+  width={0}
+  onlayout={(e: LayoutEvent) => (room = e.height)}
+></box>
 
 {#if shown.length > 0}
   <box

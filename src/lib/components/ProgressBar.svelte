@@ -24,7 +24,11 @@
   const PARTIAL = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"];
 
   let cells = $state(0);
-  const ratio = $derived(max > 0 ? Math.min(1, Math.max(0, value / max)) : 0);
+  const ratio = $derived(
+    max > 0 && Number.isFinite(value / max)
+      ? Math.min(1, Math.max(0, value / max))
+      : 0,
+  );
   const bar = $derived.by(() => {
     const eighths = Math.round(ratio * cells * 8);
     const full = Math.floor(eighths / 8);
@@ -37,7 +41,8 @@
 
 <box row gap={1} {width}>
   {#if label}<txt>{label}</txt>{/if}
-  <box grow={1} onlayout={(e: LayoutEvent) => (cells = e.width)}>
+  <!-- scrollX: the bar takes the free space, rather than the width it drew last -->
+  <box grow={1} scrollX={0} onlayout={(e: LayoutEvent) => (cells = e.width)}>
     <txt wrap="none"
       ><txt {color}>{bar.filled}</txt><txt color={trackColor}>{bar.rest}</txt
       ></txt

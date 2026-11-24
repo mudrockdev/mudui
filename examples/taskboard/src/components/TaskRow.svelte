@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getTheme, type MouseEvent } from "mudui";
+  import { Badge, getTheme, type MouseEvent } from "mudui";
   import type { Task } from "../lib/tasks.svelte.ts";
 
   let {
@@ -46,6 +46,23 @@
     dim={task.done && !highlight}
     bold={selected}>{task.title}</txt
   >
+  {#each task.tags ?? [] as tag (tag)}
+    <box paddingLeft={1}>
+      <Badge
+        label={tag}
+        color={highlight ? theme.onAccent : theme.border}
+        textColor={highlight ? theme.accent : undefined}
+      />
+    </box>
+  {/each}
+  {#if task.estimate}
+    <txt wrap="none" color={highlight ? undefined : theme.muted}
+      >{" "}{task.estimate}h</txt
+    >
+  {/if}
+  {#if task.notes}
+    <txt wrap="none" color={highlight ? undefined : theme.muted}>{" "}✎</txt>
+  {/if}
   {#if task.priority === "high"}
     <txt wrap="none" bold color={highlight ? undefined : theme.danger}
       >{" "}!!{" "}</txt

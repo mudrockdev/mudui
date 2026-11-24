@@ -15,6 +15,11 @@ export async function load(path: string): Promise<Data> {
   return {
     lists: Array.isArray(data.lists) ? data.lists : [],
     tasks: Array.isArray(data.tasks) ? data.tasks : [],
+    tags: Array.isArray(data.tags) ? data.tags : undefined,
+    settings:
+      data.settings && typeof data.settings === "object"
+        ? data.settings
+        : undefined,
   };
 }
 

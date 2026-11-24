@@ -10,14 +10,14 @@ const render = (variant: string, p: any, width = 20, height = 1) => {
 };
 
 describe("probe: display components", () => {
-  test.failing("ProgressBar with value NaN renders an empty bar, not 'undefined'/'NaN%'", () => {
+  test("ProgressBar with value NaN renders an empty bar, not 'undefined'/'NaN%'", () => {
     const out = render("progress", { value: NaN, showPercent: true });
     expect(out).not.toContain("undefined");
     expect(out).not.toContain("NaN");
     expect(out).toBe(render("progress", { value: 0, showPercent: true }));
   });
 
-  test.failing("ProgressBar with a label: shrinking the terminal matches a fresh render", () => {
+  test("ProgressBar with a label: shrinking the terminal matches a fresh render", () => {
     const p = { value: 0.5, label: "Label", showPercent: true };
     const t = renderTest(Display, { width: 60, height: 3, props: { variant: "progress", p } });
     t.frame();

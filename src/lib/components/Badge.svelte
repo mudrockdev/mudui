@@ -16,6 +16,6 @@
   } = $props();
 </script>
 
-<txt bg={color} color={textColor} bold alignSelf="start"
+<txt wrap="none" shrink={0} bg={color} color={textColor} bold alignSelf="start"
   >{" "}{label ?? ""}{@render children?.()}{" "}</txt
 >

@@ -255,6 +255,22 @@ export function measure(
   return result;
 }
 
+/**
+ * The starting size of a scroll container that grows along its parent's main
+ * axis and scrolls on that axis: just its padding and border. Its content is
+ * scrolled, so it takes its size from the free space; if it started from its
+ * content size it could never be smaller than its content, and never scroll.
+ * `undefined` for other items (and ones with an explicit size).
+ */
+function viewport_basis(item: LayoutNode, column: boolean): number | undefined {
+  const s = item.style;
+  if (s.grow <= 0) return undefined;
+  if (column ? !s.scrollsY || s.height : !s.scrollsX || s.width)
+    return undefined;
+  const c = chrome(s);
+  return column ? c.top + c.bottom : c.left + c.right;
+}
+
 const margin_x = (n: LayoutNode) => n.style.margin[1] + n.style.margin[3];
 const margin_y = (n: LayoutNode) => n.style.margin[0] + n.style.margin[2];
 
@@ -272,7 +288,7 @@ function measure_content(
     for (const item of items) {
       const m = measure(item, inner_width - margin_x(item));
       width = Math.max(width, m.width + margin_x(item));
-      height += m.height + margin_y(item);
+      height += (viewport_basis(item, true) ?? m.height) + margin_y(item);
     }
     return { width, height };
   }
@@ -297,7 +313,9 @@ function row_widths(
   const basis = items.map((item) => {
     const fixed = resolve(item.style.width, inner_width);
     return (
-      fixed ?? measure(item, Math.max(0, inner_width - margin_x(item))).width
+      fixed ??
+      viewport_basis(item, false) ??
+      measure(item, Math.max(0, inner_width - margin_x(item))).width
     );
   });
   const available =
@@ -478,7 +496,9 @@ export function layout(n: LayoutNode, rect: Rect): void {
     });
     const basis = items.map((item, i) => {
       const fixed = resolve(item.style.height, inner.height);
-      return fixed ?? measure(item, widths[i]).height;
+      return (
+        fixed ?? viewport_basis(item, true) ?? measure(item, widths[i]).height
+      );
     });
     const available =
       inner.height -

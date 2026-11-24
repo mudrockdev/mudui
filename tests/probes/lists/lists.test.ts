@@ -17,7 +17,7 @@ const lines = (frame: string) =>
   frame.split("\n").map((l) => l.replace(/[│┃]/g, "").trim());
 
 describe("ScrollView", () => {
-  test.failing("grow inside a sized parent gives a scrollable viewport", () => {
+  test("grow inside a sized parent gives a scrollable viewport", () => {
     // root <box height="100%"> at 30x8: header, ScrollView grow (20 lines), footer
     const { t } = mk(PScroll, { grow: 1, count: 20 }, 30, 8);
     expect(t.frame()).toContain("footer"); // viewport = 6 rows, footer stays visible
@@ -31,28 +31,28 @@ describe("ScrollView", () => {
 describe("Select", () => {
   const dis = (v: string) => ({ label: v, value: v, disabled: true });
 
-  test.failing("End moves to the last enabled item when the last item is disabled", () => {
+  test("End moves to the last enabled item when the last item is disabled", () => {
     const { t } = mk(PSelect, { items: ["a", "b", "c", dis("d")] });
     t.press("End");
     expect(t.frame()).toContain("value: c");
     t.unmount();
   });
 
-  test.failing("Home moves to the first enabled item when the first item is disabled", () => {
+  test("Home moves to the first enabled item when the first item is disabled", () => {
     const { t } = mk(PSelect, { items: [dis("a"), "b", "c", "d"], value: "d" });
     t.press("Home");
     expect(t.frame()).toContain("value: b");
     t.unmount();
   });
 
-  test.failing("PageDown that lands past the last enabled item stops on it", () => {
+  test("PageDown that lands past the last enabled item stops on it", () => {
     const { t } = mk(PSelect, { items: ["a", "b", "c", dis("d")], height: 4 });
     t.press("PageDown");
     expect(t.frame()).toContain("value: c");
     t.unmount();
   });
 
-  test.failing("a disabled Select ignores the wheel", () => {
+  test("a disabled Select ignores the wheel", () => {
     const t = renderTest(PSelectDisabled, { width: 30, height: 6 });
     t.wheel(2, 1, "down");
     expect(t.frame()).toContain("value: b");
@@ -75,7 +75,7 @@ describe("MultiSelect", () => {
 });
 
 describe("Tabs", () => {
-  test.failing("arrows skip a disabled tab", () => {
+  test("arrows skip a disabled tab", () => {
     const { t } = mk(
       PTabs,
       { items: ["A", { label: "B", value: "B", disabled: true }, "C"], value: "A" },
@@ -87,29 +87,31 @@ describe("Tabs", () => {
     t.unmount();
   });
 
-  test.failing("without a value, the first enabled tab is selected", () => {
+  test("without a value, the first enabled tab is selected", () => {
     const { t } = mk(PTabs, { items: [{ label: "A", value: "A", disabled: true }, "B"] }, 40, 3);
     expect(t.frame()).toContain("value: B");
     t.unmount();
   });
 
-  test.failing("a number key beyond the tab count does nothing", () => {
+  test("a number key beyond the tab count does nothing", () => {
     const { t } = mk(PTabs, { items: ["A", "B"], value: "B" }, 30, 3);
     t.press("3");
     expect(t.frame()).toContain("value: B");
     t.unmount();
   });
 
-  test.failing("the active tab stays readable when the tabs overflow", () => {
+  test("when the tabs overflow, the strip scrolls so the active tab is whole", () => {
     const { t } = mk(
       PTabs,
       { items: ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta"], value: "Zeta" },
       20,
       3,
     );
-    const strip = t.frame().split("\n")[0]; // currently " Al│ Be Ga De Eps Ze"
-    expect(strip).toContain(" Zeta ");
-    expect(strip.split("│").length).toBe(6); // all 5 separators still drawn
+    expect(t.frame().split("\n")[0]).toBe("‹ Epsilon │ Zeta");
+    t.press("1"); // back to the first tab: scrolls back, more tabs to the right
+    const strip = t.frame().split("\n")[0];
+    expect(strip.startsWith(" Alpha │ Beta")).toBe(true);
+    expect(strip.endsWith("›")).toBe(true);
     t.unmount();
   });
 });

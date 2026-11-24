@@ -93,10 +93,17 @@
 >
   {#if label}<txt
       wrap="none"
+      shrink={0}
       bold={focused}
       color={focused ? theme.accent : undefined}>{label}</txt
     >{/if}
-  <box grow={1} onlayout={(e: LayoutEvent) => (cells = e.width)} {onclick}>
+  <!-- scrollX: the track takes the free space, rather than the width it drew last -->
+  <box
+    grow={1}
+    scrollX={0}
+    onlayout={(e: LayoutEvent) => (cells = e.width)}
+    {onclick}
+  >
     <txt wrap="none"
       ><txt color={disabled ? theme.muted : color}>{"━".repeat(knob)}</txt><txt
         color={disabled ? theme.muted : focused ? color : undefined}
@@ -105,5 +112,5 @@
       ></txt
     >
   </box>
-  {#if showValue}<txt wrap="none">{format(value)}</txt>{/if}
+  {#if showValue}<txt wrap="none" shrink={0}>{format(value)}</txt>{/if}
 </box>
