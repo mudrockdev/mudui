@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "license": "MIT",
   "author": "Ufuk Furkan Öztürk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mudrockdev/mudui.git"
+  },
+  "homepage": "https://github.com/mudrockdev/mudui#readme",
+  "bugs": {
+    "url": "https://github.com/mudrockdev/mudui/issues"
+  },
   "keywords": [
     "svelte",
     "terminal",

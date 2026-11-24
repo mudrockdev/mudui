@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "license": "MIT",
   "author": "Ufuk Furkan Öztürk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mudrockdev/mudui.git",
+    "directory": "packages/create-mudui"
+  },
+  "homepage": "https://github.com/mudrockdev/mudui/tree/main/packages/create-mudui#readme",
+  "bugs": {
+    "url": "https://github.com/mudrockdev/mudui/issues"
+  },
   "description": "Create a terminal app with Svelte and mudui",
   "type": "module",
   "bin": {
