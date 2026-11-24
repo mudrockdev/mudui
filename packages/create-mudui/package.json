@@ -6,7 +6,7 @@
   "description": "Create a terminal app with Svelte and mudui",
   "type": "module",
   "bin": {
-    "create-mudui": "./index.ts"
+    "create-mudui": "index.ts"
   },
   "files": [
     "index.ts",
