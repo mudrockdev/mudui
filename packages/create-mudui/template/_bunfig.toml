@@ -1,0 +1,5 @@
+# compile .svelte files for the terminal
+preload = ["mudui/preload"]
+
+[test]
+preload = ["mudui/preload"]

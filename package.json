@@ -79,6 +79,7 @@
 	},
 	"description": "A terminal renderer and UI kit for Svelte 5, built on Svelte custom renderers",
 	"workspaces": [
-		"examples/*"
+		"examples/*",
+		"packages/*"
 	]
 }

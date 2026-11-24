@@ -24,6 +24,16 @@ mudui is built on Svelte's experimental [custom renderer](https://svelte.dev/doc
 
 ## Quick start
 
+The fastest way is the starter, which creates a small project with a counter component and a test:
+
+```sh
+bun create mudui my-app
+cd my-app
+bun run dev
+```
+
+Or set it up by hand:
+
 ```sh
 bun add mudui svelte
 ```
