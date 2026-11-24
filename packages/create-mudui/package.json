@@ -1,29 +1,29 @@
 {
-	"name": "create-mudui",
-	"version": "0.0.1",
-	"license": "MIT",
-	"author": "Ufuk Furkan Öztürk",
-	"description": "Create a terminal app with Svelte and mudui",
-	"type": "module",
-	"bin": {
-		"create-mudui": "./index.ts"
-	},
-	"files": [
-		"index.ts",
-		"template",
-		"README.md"
-	],
-	"scripts": {
-		"test": "bun test ./create.test.ts"
-	},
-	"config": {
-		"svelte": "^5.59.0",
-		"typesBun": "^1.4.5"
-	},
-	"keywords": [
-		"mudui",
-		"svelte",
-		"tui",
-		"create"
-	]
+  "name": "create-mudui",
+  "version": "0.0.1",
+  "license": "MIT",
+  "author": "Ufuk Furkan Öztürk",
+  "description": "Create a terminal app with Svelte and mudui",
+  "type": "module",
+  "bin": {
+    "create-mudui": "./index.ts"
+  },
+  "files": [
+    "index.ts",
+    "template",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "bun test ./create.test.ts"
+  },
+  "config": {
+    "svelte": "^5.59.0",
+    "typesBun": "^1.4.5"
+  },
+  "keywords": [
+    "mudui",
+    "svelte",
+    "tui",
+    "create"
+  ]
 }

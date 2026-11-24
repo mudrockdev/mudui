@@ -8,7 +8,7 @@
  * preload = ["mudui/preload"]
  * ```
  */
-import { plugin } from 'bun';
-import { mudui } from './plugin.js';
+import { plugin } from "bun";
+import { mudui } from "./plugin.js";
 
 plugin(mudui());

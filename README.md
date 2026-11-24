@@ -51,28 +51,33 @@ preload = ["mudui/preload"]
 
 ```svelte
 <script lang="ts">
-	import { Button, Panel, useInput, useApp } from 'mudui';
+  import { Button, Panel, useInput, useApp } from "mudui";
 
-	let count = $state(0);
-	const app = useApp();
+  let count = $state(0);
+  const app = useApp();
 
-	useInput((event) => {
-		if (event.is('q')) app.exit();
-	});
+  useInput((event) => {
+    if (event.is("q")) app.exit();
+  });
 </script>
 
 <Panel title="Counter" width={30}>
-	<txt>Count: <txt bold color="cyan">{count}</txt></txt>
-	<Button label="Increment" variant="primary" autofocus onclick={() => count++} />
-	<txt dim>q to quit</txt>
+  <txt>Count: <txt bold color="cyan">{count}</txt></txt>
+  <Button
+    label="Increment"
+    variant="primary"
+    autofocus
+    onclick={() => count++}
+  />
+  <txt dim>q to quit</txt>
 </Panel>
 ```
 
 **main.ts**
 
 ```ts
-import { render } from 'mudui';
-import Counter from './Counter.svelte';
+import { render } from "mudui";
+import Counter from "./Counter.svelte";
 
 const app = render(Counter);
 await app.waitUntilExit();
@@ -90,16 +95,16 @@ bun --conditions=svelte-custom-renderer main.ts
 
 Everything is built from two elements:
 
-| Element | What it is |
-| --- | --- |
-| `<box>` | A flex container (a column by default). Holds boxes, `<txt>` and loose text. |
+| Element | What it is                                                                                            |
+| ------- | ----------------------------------------------------------------------------------------------------- |
+| `<box>` | A flex container (a column by default). Holds boxes, `<txt>` and loose text.                          |
 | `<txt>` | A block of wrapping text. Nested `<txt>` elements are inline, which is how you style parts of a line. |
 
 ```svelte
 <box row gap={1} padding="0 1" border="round" title="Status" borderColor="gray">
-	<txt bold>CPU</txt>
-	<box grow={1}></box>
-	<txt color={load > 0.8 ? 'red' : 'green'}>{Math.round(load * 100)}%</txt>
+  <txt bold>CPU</txt>
+  <box grow={1}></box>
+  <txt color={load > 0.8 ? "red" : "green"}>{Math.round(load * 100)}%</txt>
 </box>
 ```
 
@@ -119,14 +124,14 @@ Some defaults are tuned for terminals. Children in a column don't shrink (they o
 
 Event attributes work like in the DOM, with DOM-like event objects that bubble up the tree:
 
-| Event | Object |
-| --- | --- |
-| `onkeydown` | `KeyEvent`: `key` (`'a'`, `'Enter'`, `'ArrowUp'`, …), `ctrl`, `alt`, `shift`, `is('ctrl+s')`, `printable` |
-| `onclick`, `onmousedown`, `onmouseup` | `MouseEvent`: `x`, `y`, `localX`, `localY`, `button` |
-| `onwheel` | `WheelEvent`: `deltaY` |
-| `onpaste` | `PasteEvent`: `text` (bracketed paste) |
-| `onfocus`, `onblur`, `onfocusin`, `onfocusout` | `FocusEvent` |
-| `onlayout` | `LayoutEvent`: `width`, `height`, `contentWidth`, `contentHeight`, fired when the element's geometry changes |
+| Event                                          | Object                                                                                                       |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `onkeydown`                                    | `KeyEvent`: `key` (`'a'`, `'Enter'`, `'ArrowUp'`, …), `ctrl`, `alt`, `shift`, `is('ctrl+s')`, `printable`    |
+| `onclick`, `onmousedown`, `onmouseup`          | `MouseEvent`: `x`, `y`, `localX`, `localY`, `button`                                                         |
+| `onwheel`                                      | `WheelEvent`: `deltaY`                                                                                       |
+| `onpaste`                                      | `PasteEvent`: `text` (bracketed paste)                                                                       |
+| `onfocus`, `onblur`, `onfocusin`, `onfocusout` | `FocusEvent`                                                                                                 |
+| `onlayout`                                     | `LayoutEvent`: `width`, `height`, `contentWidth`, `contentHeight`, fired when the element's geometry changes |
 
 Every event has `stopPropagation()` and `preventDefault()`.
 
@@ -140,23 +145,82 @@ Every event has `stopPropagation()` and `preventDefault()`.
 
 ## Components
 
-| Component | Purpose |
-| --- | --- |
-| `Box`, `Text` | Component wrappers around `<box>` / `<txt>` |
-| `Panel` | Bordered box with a title; the border lights up while something inside has focus |
-| `Button` | `label`, `onclick`, `variant` (`default` / `primary` / `success` / `danger` / `warning`), `disabled` |
-| `TextInput` | `bind:value`, `placeholder`, `prefix`, `mask`, `maxLength`, `onsubmit`, `oncancel`. Emacs-style editing keys, paste, horizontal scrolling |
-| `Checkbox` | `bind:checked`, `label`, `onchange` |
-| `Select` | A scrolling list: `items`, `bind:value`, `height`, `onchange`, `onselect`; disabled items and hints |
-| `Tabs` | `items`, `bind:value`; arrows, numbers and clicks |
-| `Table` | `columns` (`width`, `grow`, `align`, `format`, `color`), `rows`, `bind:selected`, `onselect` |
-| `ScrollView` | Scrollable area with a scrollbar; keys, wheel, and `follow` to stick to the bottom |
-| `Modal` | Centered dialog: traps focus, closes on Escape, shadows global key handlers |
-| `ProgressBar` | Smooth (⅛-cell) progress bar with optional percentage |
-| `Spinner` | Animated spinner with several styles |
-| `Badge`, `Divider`, `Spacer`, `KeyHints`, `Scrollbar` | Small pieces |
+**Layout and display**
 
-Colors come from a theme: `setTheme({ accent: 'magenta' })` in a component changes it for everything below it.
+| Component                                             | Purpose                                                                                                          |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `Box`, `Text`                                         | Component wrappers around `<box>` / `<txt>`                                                                      |
+| `Panel`                                               | Bordered box with a title; the border lights up while something inside has focus                                 |
+| `Collapsible`                                         | A header that shows or hides its content (Enter, arrows, click)                                                  |
+| `ScrollView`                                          | Scrollable area with a scrollbar; keys, wheel, and `follow` to stick to the bottom                               |
+| `LogView`                                             | Log output: renders only the visible lines, so it stays fast with thousands; follows the end until you scroll up |
+| `Badge`, `Divider`, `Spacer`, `KeyHints`, `Scrollbar` | Small pieces                                                                                                     |
+
+**Inputs**
+
+| Component            | Purpose                                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Button`             | `label`, `onclick`, `variant` (`default` / `primary` / `success` / `danger` / `warning`), `disabled`                                                   |
+| `TextInput`          | Single line: `bind:value`, `placeholder`, `prefix`, `mask`, `maxLength`, `onsubmit`, `oncancel`. Emacs-style editing keys, paste, horizontal scrolling |
+| `TextArea`           | Multi-line editor: `bind:value`, `height`, `lineNumbers`, `insertTabs`; scrolls both ways; ctrl+s or alt+Enter submits                                 |
+| `Checkbox`, `Switch` | `bind:checked`, `label`, `onchange`                                                                                                                    |
+| `RadioGroup`         | One of several: `items`, `bind:value`, `direction`                                                                                                     |
+| `Slider`             | `bind:value`, `min`, `max`, `step`; arrows, PageUp/Down, click on the track, wheel                                                                     |
+
+**Lists and pickers**
+
+| Component     | Purpose                                                                                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `Select`      | A scrolling list: `items`, `bind:value`, `height`, `onchange`, `onselect`; disabled items and hints                          |
+| `MultiSelect` | Checklist: `bind:value` (array); space toggles, `a` toggles all                                                              |
+| `Combobox`    | Search-as-you-type with fuzzy matching and highlighted matches                                                               |
+| `Tabs`        | `items`, `bind:value`; arrows, numbers and clicks                                                                            |
+| `Table`       | `columns` (`width`, `grow`, `align`, `format`, `color`), `rows`, `bind:selected`, `onselect`                                 |
+| `Tree`        | Expandable tree with connecting lines: `nodes`, `bind:selected`, `bind:expanded`; arrows open/close and move to parent/child |
+
+List items can be `{ label, value, hint?, disabled?, color? }` objects or plain strings.
+
+**Overlays**
+
+| Component                    | Purpose                                                                                         |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `Modal`                      | Centered dialog: traps focus, closes on Escape, shadows global key handlers                     |
+| `CommandPalette`             | Fuzzy-searchable list of `{ label, run, group?, shortcut? }` commands in a modal                |
+| `Toaster` + `useToast()`     | Notifications: `toast('Saved')`, `toast.error('Failed', { title, duration })`; click to dismiss |
+| `DialogHost` + `useDialog()` | `await confirm('Delete?')`, `await prompt('Name?')`, `await alert('Done')`                      |
+
+Overlays are positioned absolutely, so render `Modal`, `CommandPalette`, `Toaster` and `DialogHost` directly inside your root `<box>`.
+
+```svelte
+<script lang="ts">
+  import { Button, DialogHost, Toaster, useDialog, useToast } from "mudui";
+
+  const dialog = useDialog();
+  const toast = useToast();
+
+  async function remove() {
+    if (await dialog.confirm("Delete everything?", { danger: true }))
+      toast.success("Deleted");
+  }
+</script>
+
+<box height="100%">
+  <Button label="Delete" variant="danger" onclick={remove} />
+  <Toaster />
+  <DialogHost />
+</box>
+```
+
+**Charts**
+
+| Component     | Purpose                                               |
+| ------------- | ----------------------------------------------------- |
+| `ProgressBar` | Smooth (⅛-cell) progress bar with optional percentage |
+| `Spinner`     | Animated spinner with several styles                  |
+| `Sparkline`   | `▁▂▃▅▇` mini chart of recent values                   |
+| `BarChart`    | Labelled horizontal bars with values                  |
+
+Colors come from a theme: `setTheme({ accent: 'magenta' })` in a component changes it for everything below it. The fuzzy matcher is exported too (`fuzzyMatch`, `highlight`).
 
 ## API
 
@@ -184,20 +248,20 @@ Inside components, call these during initialisation:
 `mudui/testing` renders components into a virtual terminal, through the same custom renderer, layout and painting code that runs in a real terminal:
 
 ```ts
-import { expect, test } from 'bun:test';
-import { renderTest } from 'mudui/testing';
-import Counter from './Counter.svelte';
+import { expect, test } from "bun:test";
+import { renderTest } from "mudui/testing";
+import Counter from "./Counter.svelte";
 
-test('increments', () => {
-	const t = renderTest(Counter, { width: 40, height: 6 });
-	expect(t.frame()).toContain('Count: 0');
+test("increments", () => {
+  const t = renderTest(Counter, { width: 40, height: 6 });
+  expect(t.frame()).toContain("Count: 0");
 
-	t.press('Enter'); // keys: 'Tab', 'shift+Tab', 'ctrl+c', 'ArrowUp', ...
-	expect(t.frame()).toContain('Count: 1');
+  t.press("Enter"); // keys: 'Tab', 'shift+Tab', 'ctrl+c', 'ArrowUp', ...
+  expect(t.frame()).toContain("Count: 1");
 
-	t.clickText('Increment');
-	expect(t.frame()).toContain('Count: 2');
-	t.unmount();
+  t.clickText("Increment");
+  expect(t.frame()).toContain("Count: 2");
+  t.unmount();
 });
 ```
 

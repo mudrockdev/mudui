@@ -23,16 +23,16 @@ Press `?` in the app for all the keys. You can add, edit, toggle, reorder, prior
 
 ## What it shows
 
-| File | mudui features |
-| --- | --- |
-| `src/main.ts` | `render()`, `waitUntilExit()` |
-| `src/App.svelte` | `useInput` global shortcuts, `Modal` dialogs (focus trap + restore), `TextInput` in a modal |
+| File                             | mudui features                                                                                           |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `src/main.ts`                    | `render()`, `waitUntilExit()`                                                                            |
+| `src/App.svelte`                 | `useInput` global shortcuts, `Modal` dialogs (focus trap + restore), `TextInput` in a modal              |
 | `src/components/TaskList.svelte` | Focusable custom list with `onkeydown`/`onwheel`/`onlayout`, inline editing, `{@attach}` + `app.focus()` |
-| `src/components/TaskRow.svelte` | `MouseEvent.localX` hit areas, inherited colors |
-| `src/components/Sidebar.svelte` | `Select` with hints |
-| `src/components/Stats.svelte` | `ProgressBar`, `Table` with per-cell colors |
-| `src/lib/tasks.svelte.ts` | Runes in a `.svelte.ts` module (compiled by the same Bun plugin) |
-| `tests/app.test.ts` | End-to-end tests with `mudui/testing` |
+| `src/components/TaskRow.svelte`  | `MouseEvent.localX` hit areas, inherited colors                                                          |
+| `src/components/Sidebar.svelte`  | `Select` with hints                                                                                      |
+| `src/components/Stats.svelte`    | `ProgressBar`, `Table` with per-cell colors                                                              |
+| `src/lib/tasks.svelte.ts`        | Runes in a `.svelte.ts` module (compiled by the same Bun plugin)                                         |
+| `tests/app.test.ts`              | End-to-end tests with `mudui/testing`                                                                    |
 
 ## Setup
 
