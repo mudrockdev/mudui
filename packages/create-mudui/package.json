@@ -17,13 +17,15 @@
     "test": "bun test ./create.test.ts"
   },
   "config": {
-    "svelte": "^5.59.0",
-    "typesBun": "^1.4.5"
+    "svelte": "^5.59.0"
   },
   "keywords": [
     "mudui",
     "svelte",
     "tui",
     "create"
-  ]
+  ],
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
 }

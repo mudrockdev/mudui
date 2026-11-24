@@ -35,7 +35,8 @@ export function absolute(path: string): string {
   return Bun.fileURLToPath(url).replace(/(.)[\\/]+$/, "$1");
 }
 
-const basename = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? "";
+const basename = (path: string) =>
+  path.split(/[\\/]/).filter(Boolean).pop() ?? "";
 
 /** A valid npm package name derived from the directory name */
 export function packageName(dir: string): string {
@@ -48,7 +49,12 @@ export function packageName(dir: string): string {
 
 function isEmpty(dir: string): boolean {
   try {
-    for (const _ of new Bun.Glob("*").scanSync({ cwd: dir, dot: true, onlyFiles: false })) return false;
+    for (const _ of new Bun.Glob("*").scanSync({
+      cwd: dir,
+      dot: true,
+      onlyFiles: false,
+    }))
+      return false;
   } catch {
     // doesn't exist yet
   }
@@ -67,14 +73,20 @@ export interface Options {
 }
 
 /** Writes the project files into `dir`, which must be empty or not exist */
-export async function create({ dir, mudui = `^${pkg.version}` }: Options): Promise<string> {
+export async function create({
+  dir,
+  mudui = `^${pkg.version}`,
+}: Options): Promise<string> {
   const target = absolute(dir);
   if (!isEmpty(target)) throw new Error(`${dir} is not empty`);
 
   const name = packageName(target);
   const template = `${import.meta.dir}/template`;
 
-  for (const file of new Bun.Glob("**/*").scanSync({ cwd: template, dot: true })) {
+  for (const file of new Bun.Glob("**/*").scanSync({
+    cwd: template,
+    dot: true,
+  })) {
     const path = file.replaceAll("\\", "/");
     const source = Bun.file(`${template}/${path}`);
     const out = `${target}/${RENAMES[path] ?? path}`;
@@ -103,22 +115,32 @@ export async function create({ dir, mudui = `^${pkg.version}` }: Options): Promi
       svelte: pkg.config.svelte,
     },
     devDependencies: {
-      "@types/bun": pkg.config.typesBun,
+      "@types/bun": "latest",
     },
   };
-  await Bun.write(`${target}/package.json`, JSON.stringify(manifest, null, "\t") + "\n");
+  await Bun.write(
+    `${target}/package.json`,
+    JSON.stringify(manifest, null, "\t") + "\n",
+  );
 
   return name;
 }
 
 function parseArgs(argv: string[]) {
-  const args = { help: false, install: true, mudui: undefined as string | undefined, dir: undefined as string | undefined };
+  const args = {
+    help: false,
+    install: true,
+    mudui: undefined as string | undefined,
+    dir: undefined as string | undefined,
+  };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "-h" || arg === "--help") args.help = true;
     else if (arg === "--no-install") args.install = false;
-    else if (arg === "--mudui") args.mudui = argv[++i] ?? fail("--mudui needs a value");
-    else if (arg.startsWith("--mudui=")) args.mudui = arg.slice("--mudui=".length);
+    else if (arg === "--mudui")
+      args.mudui = argv[++i] ?? fail("--mudui needs a value");
+    else if (arg.startsWith("--mudui="))
+      args.mudui = arg.slice("--mudui=".length);
     else if (arg.startsWith("-")) fail(`unknown option ${arg}\n${HELP}`);
     else if (args.dir === undefined) args.dir = arg;
     else fail(`unexpected argument ${arg}`);
@@ -134,7 +156,9 @@ async function main() {
     return;
   }
 
-  const dir = args.dir ?? (prompt("Project directory:", "mudui-app")?.trim() || "mudui-app");
+  const dir =
+    args.dir ??
+    (prompt("Project directory:", "mudui-app")?.trim() || "mudui-app");
 
   try {
     await create({ dir, mudui: args.mudui });
@@ -154,7 +178,9 @@ async function main() {
 
   console.log(`\n${bold("Done!")} Next steps:\n`);
   if (absolute(dir) !== absolute(".")) {
-    console.log(`  ${cyan(`cd ${dir.includes(" ") ? JSON.stringify(dir) : dir}`)}`);
+    console.log(
+      `  ${cyan(`cd ${dir.includes(" ") ? JSON.stringify(dir) : dir}`)}`,
+    );
   }
   if (!args.install) console.log(`  ${cyan("bun install")}`);
   console.log(`  ${cyan("bun run dev")}\n`);

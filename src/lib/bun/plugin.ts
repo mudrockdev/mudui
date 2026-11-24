@@ -122,16 +122,19 @@ export function mudui(options: MuduiPluginOptions = {}): BunPlugin {
       // Load Svelte's client runtime even without `--conditions=svelte-custom-renderer`:
       // Bun has no config option for conditions and plugins can't change how bare
       // specifiers like "svelte" resolve, but they can change what a resolved file contains.
-      build.onLoad({ filter: /[\\/]svelte[\\/]src[\\/].*server\.js$/ }, async ({ path }) => {
-        const client = await clientEntry(path);
-        return {
-          contents: client
-            ? `export * from ${JSON.stringify(client)};`
-            : await Bun.file(path).text(),
-          loader: "js",
-          resolveDir: dirname(path),
-        };
-      });
+      build.onLoad(
+        { filter: /[\\/]svelte[\\/]src[\\/].*server\.js$/ },
+        async ({ path }) => {
+          const client = await clientEntry(path);
+          return {
+            contents: client
+              ? `export * from ${JSON.stringify(client)};`
+              : await Bun.file(path).text(),
+            loader: "js",
+            resolveDir: dirname(path),
+          };
+        },
+      );
 
       build.onLoad({ filter: /\.svelte$/ }, async ({ path }) => {
         const custom = options.renderer?.(path);

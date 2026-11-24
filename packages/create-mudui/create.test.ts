@@ -36,14 +36,16 @@ describe("create-mudui", () => {
     const manifest = await Bun.file(`${dir}/package.json`).json();
     expect(manifest.name).toBe("my-app");
     expect(Object.keys(manifest.dependencies)).toEqual(["mudui", "svelte"]);
-    expect(Object.keys(manifest.devDependencies)).toEqual(["@types/bun"]);
+    expect(manifest.devDependencies).toEqual({ "@types/bun": "latest" });
     expect(manifest.scripts.start).toBe("bun src/main.ts");
     expect(manifest.scripts.test).toBe("bun test");
     expect(manifest.scripts["build:windows"]).toBe("bun build.ts windows");
     expect(manifest.scripts["build:linux"]).toBe("bun build.ts linux");
     expect(manifest.scripts["build:darwin"]).toBe("bun build.ts darwin");
     expect(await read(`${dir}/README.md`)).toStartWith("# my-app\n");
-    expect(await read(`${dir}/.gitignore`)).toBe(await read(`${import.meta.dir}/template/_gitignore`));
+    expect(await read(`${dir}/.gitignore`)).toBe(
+      await read(`${import.meta.dir}/template/_gitignore`),
+    );
   });
 
   test("uses the given mudui specifier", async () => {
