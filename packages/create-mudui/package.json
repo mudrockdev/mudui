@@ -1,6 +1,6 @@
 {
   "name": "create-mudui",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "license": "MIT",
   "author": "Ufuk Furkan Öztürk",
   "description": "Create a terminal app with Svelte and mudui",
